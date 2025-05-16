@@ -2,12 +2,12 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "Backend/index.ts",
   "scripts": {
-    "dev": "nodemon backend/index.ts",
+    "dev": "nodemon Backend/index.ts",
     "stripe":"stripe listen --forward-to localhost:8000/api/stripe/webhook",
-    "build":"npm install && npm install --prefix frontend && npm run build --prefix frontend",
-    "start":"nodemon backend/index.ts"
+    "build":"npm install && npm install --prefix Frontend && npm run build --prefix Frontend",
+    "start":"nodemon Backend/index.ts"
   },
   "keywords": [],
   "author": "",
