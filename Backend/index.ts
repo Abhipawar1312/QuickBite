@@ -22,8 +22,8 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.json());
 app.use(cookieParser());
 const corsOptions = {
-    origin: "http://localhost:5173",
-    // origin: "https://quickbite-ogw0.onrender.com",
+    // origin: "http://localhost:5173",
+    origin: "https://quickbite-ogw0.onrender.com",
     credentials: true
 }
 app.use(cors(corsOptions));
