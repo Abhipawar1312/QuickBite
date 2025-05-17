@@ -22,7 +22,6 @@ import Success from "./components/Success";
 import Loading from "./components/ui/Loading";
 
 import { useUserStore } from "./store/useUserStore";
-import { useThemeStore } from "./store/useThemeStore";
 
 // Route guards
 const ProtectedRoutes = ({ children }: { children: React.ReactNode }) => {
