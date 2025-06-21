@@ -8,6 +8,14 @@ import { useNavigate } from "react-router-dom";
 const HeroSection = () => {
   const [searchText, setSearchText] = useState<string>("");
   const navigate = useNavigate();
+
+  // Handle Enter key press
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && searchText.trim() !== "") {
+      navigate(`/search/${searchText}`);
+    }
+  };
+
   return (
     <div className="flex flex-col md:flex-row max-w-7xl mx-auto md:p-10 rounded-lg items-center justify-center m-4 gap-20">
       <div className="flex flex-col gap-10 md:w-[40%]">
@@ -25,12 +33,14 @@ const HeroSection = () => {
             value={searchText}
             placeholder="Search restaurant by name, city & country"
             onChange={(e) => setSearchText(e.target.value)}
+            onKeyDown={handleKeyDown}
             className="pl-10 shadow-lg"
           />
           <Search className="text-gray-500 absolute inset-y-2 left-2" />
           <Button
             onClick={() => navigate(`/search/${searchText}`)}
             className="bg-sky-blue hover:bg-sky-blue"
+            disabled={searchText.trim() === ""}
           >
             Search
           </Button>
@@ -46,4 +56,5 @@ const HeroSection = () => {
     </div>
   );
 };
+
 export default HeroSection;

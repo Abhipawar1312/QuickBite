@@ -3,7 +3,15 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { SignupInputState, userSignupSchema } from "@/schema/userSchema";
 import { useUserStore } from "@/store/useUserStore";
-import { Loader2, LockKeyhole, Mail, Phone, User } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Loader2,
+  LockKeyhole,
+  Mail,
+  Phone,
+  User,
+} from "lucide-react";
 import { ChangeEvent, FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -16,12 +24,44 @@ const SignUp = () => {
   });
 
   const [errors, setErrors] = useState<Partial<SignupInputState>>({});
+  const [showPassword, setShowPassword] = useState(false);
   const { signup, loading } = useUserStore();
+  const navigate = useNavigate();
+
   const onChangeHandler = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setInput({ ...input, [name]: value });
+    setInput({
+      ...input,
+      [name]: value,
+    });
+
+    // Validate only the current field
+    const singleFieldSchema =
+      userSignupSchema.shape[name as keyof SignupInputState];
+
+    if (singleFieldSchema) {
+      const result = singleFieldSchema.safeParse(value);
+
+      // setErrors((prevErrors) => ({
+      //   ...prevErrors,
+      //   [name]: result.success ? undefined : prevErrors[name],
+      // }));
+
+      setErrors((prevErrors) => ({
+        ...prevErrors,
+        [name as keyof SignupInputState]: result.success
+          ? undefined
+          : prevErrors[name as keyof SignupInputState],
+      }));
+
+      // Optional: if you want to update the error with new message if still invalid
+      setErrors((prevErrors) => ({
+        ...prevErrors,
+        [name]: result.success ? undefined : result.error.issues[0].message,
+      }));
+    }
   };
-  const navigate = useNavigate();
+
   const onSubmitHandler = async (e: FormEvent) => {
     e.preventDefault();
     const result = userSignupSchema.safeParse(input);
@@ -30,107 +70,141 @@ const SignUp = () => {
       setErrors(fieldErrors as Partial<SignupInputState>);
       return;
     }
+
     try {
       await signup(input);
       navigate("/verify-email");
-    } catch (error) {
-      console.log(error);
+    } catch (error: any) {
+      const message = error.message;
+      if (message === "Email already exists") {
+        setErrors({ email: message });
+      } else if (message === "Contact number already exists") {
+        setErrors({ contact: message });
+      } else {
+        console.error("Unhandled signup error:", message);
+      }
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
       <form
         onSubmit={onSubmitHandler}
-        className="md:p-8 w-full max-w-md rounded-lg md:border border-gray-200 mx-4"
+        className="w-full max-w-md bg-white border border-gray-200 shadow-md rounded-2xl p-8"
       >
-        <div className="mb-4">
-          <h1 className="font-bold text-2xl">QuickBite</h1>
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-bold text-gray-800">QuickBite</h1>
+          <p className="text-sm text-gray-500 mt-1">Create your account</p>
         </div>
-        <div className="mb-4">
+
+        {/* Full Name */}
+        <div className="mb-5">
           <div className="relative">
             <Input
               type="text"
+              name="fullname"
               value={input.fullname}
               onChange={onChangeHandler}
-              name="fullname"
-              placeholder="fullname"
-              className="pl-10 focus-visible:ring-1"
+              placeholder="Full Name"
+              className={`pl-10 ${errors?.fullname ? "border-red-500" : ""}`}
             />
-            <User className="absolute inset-y-2 left-2 text-gray-500 pointer-events-none" />
-            {errors && (
-              <span className="text-xs text-red-500">{errors.fullname}</span>
-            )}
+            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           </div>
+          {errors?.fullname && (
+            <p className="mt-1 text-xs text-red-500">{errors.fullname}</p>
+          )}
         </div>
-        <div className="mb-4">
+
+        {/* Email */}
+        <div className="mb-5">
           <div className="relative">
             <Input
               type="email"
+              name="email"
               value={input.email}
               onChange={onChangeHandler}
-              name="email"
               placeholder="Email"
-              className="pl-10 focus-visible:ring-1"
+              className={`pl-10 ${errors?.email ? "border-red-500" : ""}`}
             />
-            <Mail className="absolute inset-y-2 left-2 text-gray-500 pointer-events-none" />
-            {errors && (
-              <span className="text-xs text-red-500">{errors.email}</span>
-            )}
+            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           </div>
+          {errors?.email && (
+            <p className="mt-1 text-xs text-red-500">{errors.email}</p>
+          )}
         </div>
-        <div className="mb-4">
+
+        {/* Password */}
+        <div className="mb-5">
           <div className="relative">
             <Input
-              type="password"
+              type={showPassword ? "text" : "password"}
+              name="password"
               value={input.password}
               onChange={onChangeHandler}
-              name="password"
               placeholder="Password"
-              className="pl-10 focus-visible:ring-1"
+              className={`pl-10 pr-10 ${
+                errors?.password ? "border-red-500" : ""
+              }`}
             />
-            <LockKeyhole className="absolute inset-y-2 left-2 text-gray-500 pointer-events-none" />
-            {errors && (
-              <span className="text-xs text-red-500">{errors.password}</span>
-            )}
+            <LockKeyhole className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 cursor-pointer"
+              tabIndex={-1}
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
           </div>
+          {errors?.password && (
+            <p className="mt-1 text-xs text-red-500">{errors.password}</p>
+          )}
         </div>
-        <div className="mb-4">
+
+        {/* Contact Number */}
+        <div className="mb-6">
           <div className="relative">
             <Input
-              type="text"
+              type="number"
+              name="contact"
               value={input.contact}
               onChange={onChangeHandler}
-              name="contact"
-              placeholder="Contact"
-              className="pl-10 focus-visible:ring-1"
+              placeholder="Contact Number"
+              className={`pl-10 ${errors?.contact ? "border-red-500" : ""}`}
             />
-            <Phone className="absolute inset-y-2 left-2 text-gray-500 pointer-events-none" />
-            {errors && (
-              <span className="text-xs text-red-500">{errors.contact}</span>
-            )}
+            <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           </div>
+          {errors?.contact && (
+            <p className="mt-1 text-xs text-red-500">{errors.contact}</p>
+          )}
         </div>
-        <div className="mb-10">
+
+        {/* Submit Button */}
+        <div className="mb-6">
           {loading ? (
-            <Button className="w-full bg-sky-blue hover:bg-sky-blue">
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Please Wait
+            <Button className="w-full bg-sky-blue hover:bg-sky-blue" disabled>
+              <Loader2 className="animate-spin mr-2 h-4 w-4" />
+              Signing up...
             </Button>
           ) : (
             <Button
               type="submit"
-              className="w-full bg-sky-blue hover:bg-sky-blue"
+              className="w-full bg-sky-blue hover:bg-sky-blue text-white"
             >
               Sign Up
             </Button>
           )}
         </div>
+
         <Separator />
-        <p className="mt-2">
+
+        <p className="text-center mt-4 text-sm text-gray-600">
           Already have an account?{" "}
-          <Link to="/login" className="text-blue-500">
-            Login{" "}
+          <Link
+            to="/login"
+            className="text-blue-600 font-medium hover:underline"
+          >
+            Login
           </Link>
         </p>
       </form>

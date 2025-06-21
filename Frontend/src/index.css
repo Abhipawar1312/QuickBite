@@ -151,3 +151,10 @@
 .bg-sky-blue:hover {
   background-color: #87CEEB; /* deep sky blue color */
 }
+
+input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0px 1000px white inset !important;
+  box-shadow: 0 0 0px 1000px white inset !important;
+  -webkit-text-fill-color: #000 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}

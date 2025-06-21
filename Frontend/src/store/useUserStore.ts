@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { useThemeStore } from "./useThemeStore";
 
 // const API_END_POINT = "http://localhost:8000/api/v1/user";
-
 const API_END_POINT = "https://quickbite-ogw0.onrender.com/api/v1/user"
 axios.defaults.withCredentials = true;
 
@@ -51,15 +50,22 @@ export const useUserStore = create<UserState>()(
                     const response = await axios.post(`${API_END_POINT}/signup`, input, {
                         headers: { 'Content-Type': 'application/json' },
                     });
+
                     if (response.data.success) {
                         toast.success(response.data.message);
                         set({ loading: false, user: response.data.user, isAuthenticated: true });
+                    } else {
+                        // ❗ THROW if success is false
+                        throw new Error(response.data.message);
                     }
                 } catch (error: any) {
-                    toast.error(error.response.data.message);
+                    const message = error?.response?.data?.message || error.message || "Signup failed";
+                    toast.error(message);
                     set({ loading: false });
+                    throw new Error(message); // Ensure the caller can catch this
                 }
             },
+
 
             login: async (input: LoginInputState) => {
                 try {
@@ -70,10 +76,14 @@ export const useUserStore = create<UserState>()(
                     if (response.data.success) {
                         toast.success(response.data.message);
                         set({ loading: false, user: response.data.user, isAuthenticated: true });
+                    } else {
+                        throw new Error(response.data.message);
                     }
                 } catch (error: any) {
-                    toast.error(error.response.data.message);
+                    const message = error?.response?.data?.message || error.message || "Login failed";
+                    toast.error(message);
                     set({ loading: false });
+                    throw new Error(message); // 👈 this is key
                 }
             },
 

@@ -15,14 +15,23 @@ import {
 export const signup = async (req: Request, res: Response): Promise<void> => {
     try {
         const { fullname, email, password, contact } = req.body;
-        let user = await User.findOne({ email });
-        if (user) {
-            res.status(400).json({ message: "Email already exists" });
+
+        const userByEmail = await User.findOne({ email });
+        if (userByEmail) {
+            res.status(400).json({ success: false, message: "Email already exists" });
             return;
         }
+
+        const userByContact = await User.findOne({ contact });
+        if (userByContact) {
+            res.status(400).json({ success: false, message: "Contact number already exists" });
+            return;
+        }
+
         const hashedPassword = await bcrypt.hash(password, 10);
         const verificationToken = generateVerificationCode();
-        user = await User.create({
+
+        const user = await User.create({
             fullname,
             email,
             password: hashedPassword,
@@ -30,19 +39,22 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
             verificationToken,
             verificationTokenExpiresAt: Date.now() + 24 * 60 * 60 * 1000,
         });
+
         generateToken(res, user);
         await sendVerificationEmail(email, verificationToken);
+
         const userWithoutPassword = await User.findOne({ email }).select("-password");
+
         res.status(201).json({
             success: true,
             message: "Account created successfully",
-            user: userWithoutPassword
+            user: userWithoutPassword,
         });
     } catch (error) {
         console.log(error);
-        res.status(500).json({ message: "Internal Server Error" });
+        res.status(500).json({ success: false, message: "Internal Server Error" });
     }
-}
+};
 
 export const login = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -74,7 +86,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         });
     } catch (error) {
         console.log(error);
-        res.status(500).json({ message: "Internal Server Error" });
+        res.status(500).json({ success: false, message: "Internal Server Error" });
     }
 }
 
@@ -106,7 +118,7 @@ export const verifyEmail = async (req: Request, res: Response): Promise<void> =>
         });
     } catch (error) {
         console.log(error);
-        res.status(500).json({ message: "Internal Server Error" });
+        res.status(500).json({ success: false, message: "Internal Server Error" });
     }
 }
 
@@ -180,7 +192,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
         });
     } catch (error) {
         console.log(error);
-        res.status(500).json({ message: "Internal Server Error" });
+        res.status(500).json({ success: false, message: "Internal Server Error" });
     }
 }
 
