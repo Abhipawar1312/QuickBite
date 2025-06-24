@@ -3,17 +3,17 @@
   "version": "1.0.0",
   "description": "",
   "main": "Backend/index.js",
-"scripts": {
+  "scripts": {
     "dev": "nodemon Backend/index.ts",
-    "stripe":"stripe listen --forward-to localhost:8000/api/stripe/webhook",
-    "build":"npm install && npm install --prefix Frontend && npm run build --prefix Frontend",
-  "start": "node --max-old-space-size=4096 node_modules/.bin/nodemon Backend/index.ts"
-
+    "stripe": "stripe listen --forward-to localhost:8000/api/stripe/webhook",
+    "build": "npm install && npm install --prefix Frontend && npm run build --prefix Frontend",
+    "start": "node --max-old-space-size=4096 node_modules/.bin/nodemon Backend/index.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@sendgrid/mail": "^8.1.5",
     "bcryptjs": "^3.0.2",
     "cloudinary": "^2.6.0",
     "cookie-parser": "^1.4.7",
