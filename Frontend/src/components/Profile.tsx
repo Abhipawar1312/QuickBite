@@ -68,7 +68,7 @@ const Profile = () => {
           <Avatar className="relative md:w-28 md:h-28 w-20 h-20">
             <AvatarImage src={selectedProfilePicture} />
             <AvatarFallback>CN</AvatarFallback>
-            <input
+            <Input
               ref={imageRef}
               className="hidden"
               type="file"
@@ -93,56 +93,56 @@ const Profile = () => {
         </div>
       </div>
       <div className="grid md:grid-cols-4 md:gap-2 gap-3 my-10">
-        <div className="flex items-center gap-4 rounded-sm p-2 bg-gray-200">
+        <div className="flex items-center gap-4 rounded-sm p-2 ">
           <Mail className="text-gray-500" />
           <div className="w-full">
             <Label>Email</Label>
-            <input
+            <Input
               disabled
               name="email"
               placeholder="Enter Your Email"
               value={profileData.email}
               onChange={changeHandler}
-              className="w-full text-gray-600 bg-transparent focus-visible:ring-0 focus-visible:border-transparent outline-none border-none"
+              className="w-full text-gray-600 bg-transparent focus-visible:ring-0 focus-visible:border-transparent outline-none border-none shadow-lg"
             />
           </div>
         </div>
-        <div className="flex items-center gap-4 rounded-sm p-2 bg-gray-200">
+        <div className="flex items-center gap-4 rounded-sm p-2 ">
           <LocateIcon className="text-gray-500" />
           <div className="w-full">
             <Label>Address</Label>
-            <input
+            <Input
               name="address"
               placeholder="Enter your address"
               value={profileData.address}
               onChange={changeHandler}
-              className="w-full text-gray-600 bg-transparent focus-visible:ring-0 focus-visible:border-transparent outline-none border-none"
+              className="w-full text-gray-600 bg-transparent focus-visible:ring-0 focus-visible:border-transparent outline-none border-none shadow-lg"
             />
           </div>
         </div>
-        <div className="flex items-center gap-4 rounded-sm p-2 bg-gray-200">
+        <div className="flex items-center gap-4 rounded-sm p-2 ">
           <MapPin className="text-gray-500" />
           <div className="w-full">
             <Label>City</Label>
-            <input
+            <Input
               name="city"
               placeholder="Enter your city"
               value={profileData.city}
               onChange={changeHandler}
-              className="w-full text-gray-600 bg-transparent focus-visible:ring-0 focus-visible:border-transparent outline-none border-none"
+              className="w-full text-gray-600 bg-transparent focus-visible:ring-0 focus-visible:border-transparent outline-none border-none shadow-lg"
             />
           </div>
         </div>
-        <div className="flex items-center gap-4 rounded-sm p-2 bg-gray-200">
+        <div className="flex items-center gap-4 rounded-sm p-2 ">
           <MapPinnedIcon className="text-gray-500" />
           <div className="w-full">
             <Label>Country</Label>
-            <input
+            <Input
               name="country"
               placeholder="Enter your country"
               value={profileData.country}
               onChange={changeHandler}
-              className="w-full text-gray-600 bg-transparent focus-visible:ring-0 focus-visible:border-transparent outline-none border-none"
+              className="w-full text-gray-600 bg-transparent focus-visible:ring-0 focus-visible:border-transparent outline-none border-none shadow-lg"
             />
           </div>
         </div>

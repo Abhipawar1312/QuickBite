@@ -1,14 +1,15 @@
-import mongoose, { Document } from "mongoose";
+// models/order.model.ts
+import mongoose, { Schema, Document, Model } from "mongoose";
 
-type DeliveryDetails = {
+export interface IDeliveryDetails {
     email: string;
     name: string;
     address: string;
     city: string;
 }
 
-type CartItems = {
-    menuId: string;
+export interface ICartItem {
+    menuId: mongoose.Types.ObjectId;
     name: string;
     image: string;
     price: number;
@@ -16,47 +17,45 @@ type CartItems = {
 }
 
 export interface IOrder extends Document {
-    user: mongoose.Schema.Types.ObjectId;
-    restaurant: mongoose.Schema.Types.ObjectId;
-    deliveryDetails: DeliveryDetails,
-    cartItems: CartItems;
-    totalAmount: number;
-    status: "pending" | "confirmed" | "preparing" | "outfordelivery" | "delivered"
+    user: mongoose.Types.ObjectId;
+    restaurant: mongoose.Types.ObjectId;
+    deliveryDetails: IDeliveryDetails;
+    cartItems: ICartItem[];               // ← array!
+    totalAmount?: number;
+    status: "pending" | "confirmed" | "preparing" | "outfordelivery" | "delivered";
+    createdAt: Date;
+    updatedAt: Date;
 }
 
-const orderSchema = new mongoose.Schema<IOrder>({
-    user: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-    },
-    restaurant: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Restaurant',
-        required: true
-    },
-    deliveryDetails: {
-        email: { type: String, required: true },
-        name: { type: String, required: true },
-        address: { type: String, required: true },
-        city: { type: String, required: true },
-    },
-    cartItems: [
-        {
-            menuId: { type: String, required: true },
-            name: { type: String, required: true },
-            image: { type: String, required: true },
-            price: { type: Number, required: true },
-            quantity: { type: Number, required: true },
-        }
-    ],
-    totalAmount: Number,
-    status: {
-        type: String,
-        enum: ["pending", "confirmed", "preparing", "outfordelivery", "delivered"],
-        required: true
-    }
+const DeliveryDetailsSchema = new Schema<IDeliveryDetails>({
+    email: { type: String, required: true },
+    name: { type: String, required: true },
+    address: { type: String, required: true },
+    city: { type: String, required: true },
+});
 
+const CartItemSchema = new Schema<ICartItem>({
+    menuId: { type: Schema.Types.ObjectId, ref: "Menu", required: true },
+    name: { type: String, required: true },
+    image: { type: String, required: true },
+    price: { type: Number, required: true },
+    quantity: { type: Number, required: true },
+});
 
-}, { timestamps: true });
-export const Order = mongoose.model("Order", orderSchema);
+const OrderSchema = new Schema<IOrder>(
+    {
+        user: { type: Schema.Types.ObjectId, ref: "User", required: true },
+        restaurant: { type: Schema.Types.ObjectId, ref: "Restaurant", required: true },
+        deliveryDetails: { type: DeliveryDetailsSchema, required: true },
+        cartItems: { type: [CartItemSchema], required: true },
+        totalAmount: { type: Number },
+        status: {
+            type: String,
+            enum: ["pending", "confirmed", "preparing", "outfordelivery", "delivered"],
+            default: "pending",
+        },
+    },
+    { timestamps: true }
+);
+
+export const Order: Model<IOrder> = mongoose.model<IOrder>("Order", OrderSchema);

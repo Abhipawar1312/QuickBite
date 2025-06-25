@@ -152,9 +152,29 @@
   background-color: #87CEEB; /* deep sky blue color */
 }
 
+/* Autofill styling */
+/* Light mode autofill fix */
+:root {
+  --input-bg-color: white;
+  --input-text-color: black;
+}
+
+/* Dark mode autofill fix */
+.dark {
+  --input-bg-color: #1f2937; /* or whatever matches your dark bg */
+  --input-text-color: white;
+}
+
 input:-webkit-autofill {
-  -webkit-box-shadow: 0 0 0px 1000px white inset !important;
-  box-shadow: 0 0 0px 1000px white inset !important;
-  -webkit-text-fill-color: #000 !important;
+  box-shadow: 0 0 0 1000px var(--input-bg-color) inset !important;
+  -webkit-box-shadow: 0 0 0 1000px var(--input-bg-color) inset !important;
+  -webkit-text-fill-color: var(--input-text-color) !important;
+  color: var(--input-text-color) !important;
   transition: background-color 5000s ease-in-out 0s;
 }
+
+/* Normal input text color (respects theme) */
+input {
+  color: var(--input-text-color) !important;
+}
+

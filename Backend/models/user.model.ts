@@ -42,15 +42,15 @@ const userSchema = new mongoose.Schema<IUserDocument>({
     },
     address: {
         type: String,
-        default: "Update your address"
+        default: null
     },
     city: {
         type: String,
-        default: "Update your city"
+        default: null
     },
     country: {
         type: String,
-        default: "Update your country"
+        default: null
     },
     profilePicture: {
         type: String,

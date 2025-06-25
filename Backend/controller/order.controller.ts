@@ -1,10 +1,13 @@
-import { Request, Response } from "express";
-import { Restaurant } from "../models/restaurant.model";
-import { Order } from "../models/order.model";
-import Stripe from "stripe";
-import dotenv from "dotenv";
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+// controllers/order.controller.ts
 
+import { Request, Response } from "express";
+import Stripe from "stripe";
+import { Order } from "../models/order.model";
+import { Restaurant } from "../models/restaurant.model";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {});
+
+// Type for incoming checkout payload
 type CheckoutSessionRequest = {
     cartItems: {
         menuId: string;
@@ -12,152 +15,122 @@ type CheckoutSessionRequest = {
         image: string;
         price: number;
         quantity: number;
-    }[],
+    }[];
     deliveryDetails: {
         name: string;
         email: string;
         address: string;
         city: string;
-    },
+    };
     restaurantId: string;
-}
+};
 
 export const getOrders = async (req: Request, res: Response): Promise<void> => {
     try {
-        const orders = await Order.find({ user: req.id })
-            .populate('user')
-            .populate('restaurant');
-        res.status(200).json({
-            success: true,
-            orders
-        });
-        return;
+        const userId = (req as any).id;
+        const orders = await Order.find({ user: userId })
+            .populate("user", "-password")
+            .populate("restaurant");
+        res.status(200).json({ success: true, orders });
     } catch (error) {
-        console.log(error);
+        console.error("getOrders error:", error);
         res.status(500).json({ success: false, message: "Internal server error" });
-        return;
     }
 };
 
 export const createCheckoutSession = async (req: Request, res: Response): Promise<void> => {
     try {
-        const checkoutSessionRequest: CheckoutSessionRequest = req.body;
-        const restaurant = await Restaurant.findById(checkoutSessionRequest.restaurantId).populate('menus');
+        const body = req.body as CheckoutSessionRequest;
+        const userId = (req as any).id;
+
+        // 1️⃣ Fetch restaurant and its menus (if needed)
+        const restaurant = await Restaurant.findById(body.restaurantId).populate("menus");
         if (!restaurant) {
-            res.status(404).json({
-                success: false,
-                message: "Restaurant not found."
-            });
+            res.status(404).json({ success: false, message: "Restaurant not found." });
             return;
         }
 
-        const order: any = new Order({
+        // 2️⃣ Calculate totalAmount
+        const totalAmount = body.cartItems.reduce(
+            (sum, item) => sum + item.price * item.quantity,
+            0
+        );
+
+        // 3️⃣ Create the Order document with totalAmount
+        const order = new Order({
+            user: userId,
             restaurant: restaurant._id,
-            user: req.id,
-            deliveryDetails: checkoutSessionRequest.deliveryDetails,
-            cartItems: checkoutSessionRequest.cartItems,
-            status: "pending"
+            deliveryDetails: body.deliveryDetails,
+            cartItems: body.cartItems.map(item => ({
+                menuId: item.menuId,
+                name: item.name,
+                image: item.image,
+                price: item.price,
+                quantity: item.quantity,
+            })),
+            totalAmount,           // ← persisted here
+            status: "pending",
         });
+        await order.save();
 
-        // Create line items based on the cartItems and restaurant menus
-        const menuItems = restaurant.menus;
-        const lineItems = createLineItems(checkoutSessionRequest, menuItems);
+        // 4️⃣ Build Stripe line items
+        const lineItems = body.cartItems.map(
+            item => ({
+                price_data: {
+                    currency: "inr",
+                    product_data: {
+                        name: item.name,
+                        images: [item.image],
+                    },
+                    unit_amount: item.price * 100,
+                },
+                quantity: item.quantity,
+            }) as Stripe.Checkout.SessionCreateParams.LineItem
+        );
 
+        // 5️⃣ Create Stripe checkout session
         const session = await stripe.checkout.sessions.create({
-            payment_method_types: ['card'],
-            shipping_address_collection: {
-                allowed_countries: ['GB', 'US', 'CA']
-            },
+            payment_method_types: ["card"],
+            shipping_address_collection: { allowed_countries: ["IN"] },
             line_items: lineItems,
-            mode: 'payment',
+            mode: "payment",
             success_url: `${process.env.FRONTEND_URL}/order/status`,
             cancel_url: `${process.env.FRONTEND_URL}/cart`,
-            metadata: {
-                orderId: order._id.toString(),
-                images: JSON.stringify(menuItems.map((item: any) => item.image))
-            }
+            metadata: { orderId: `${order._id}` },
         });
 
-        if (!session.url) {
-            res.status(400).json({ success: false, message: "Error while creating session" });
-            return;
-        }
-
-        await order.save();
-        res.status(200).json({
-            session
-        });
-        return;
+        res.status(200).json({ session });
     } catch (error) {
-        console.log(error);
-        res.status(500).json({ message: "Internal server error" });
-        return;
+        console.error("createCheckoutSession error:", error);
+        res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
 
 export const stripeWebhook = async (req: Request, res: Response): Promise<void> => {
+    const signature = req.headers["stripe-signature"] as string;
+    const webhookSecret = process.env.WEBHOOK_ENDPOINT_SECRET!;
+
     let event: Stripe.Event;
     try {
-        const signature = req.headers["stripe-signature"];
-        const payloadString = JSON.stringify(req.body, null, 2);
-        const secret = process.env.WEBHOOK_ENDPOINT_SECRET!;
-
-        // Generate test header string for event construction (only used for test purposes)
-        const header = stripe.webhooks.generateTestHeaderString({
-            payload: payloadString,
-            secret,
-        });
-
-        event = stripe.webhooks.constructEvent(payloadString, header, secret);
-    } catch (error: any) {
-        console.error('Webhook error:', error.message);
-        res.status(400).send(`Webhook error: ${error.message}`);
+        event = stripe.webhooks.constructEvent(req.body as Buffer, signature, webhookSecret);
+    } catch (err: any) {
+        console.error("Webhook signature verification failed:", err.message);
+        res.status(400).send(`Webhook Error: ${err.message}`);
         return;
     }
 
-    // Handle the checkout session completed event
     if (event.type === "checkout.session.completed") {
-        try {
-            const session = event.data.object as Stripe.Checkout.Session;
-            const order = await Order.findById(session.metadata?.orderId);
-            if (!order) {
-                res.status(404).json({ message: "Order not found" });
-                return;
+        const session = event.data.object as Stripe.Checkout.Session;
+        const orderId = session.metadata?.orderId;
+        if (orderId) {
+            const order = await Order.findById(orderId);
+            if (order) {
+                order.status = "confirmed";
+                order.totalAmount = session.amount_total ?? order.totalAmount;
+                await order.save();
             }
-            if (session.amount_total) {
-                order.totalAmount = session.amount_total;
-            }
-            order.status = "confirmed";
-            await order.save();
-        } catch (error) {
-            console.error('Error handling event:', error);
-            res.status(500).json({ message: "Internal Server Error" });
-            return;
         }
     }
-    res.status(200).send();
-    return;
-};
 
-export const createLineItems = (
-    checkoutSessionRequest: CheckoutSessionRequest,
-    menuItems: any
-): Stripe.Checkout.SessionCreateParams.LineItem[] => {
-    // Create line items based on cartItems and the corresponding menu items
-    const lineItems = checkoutSessionRequest.cartItems.map((cartItem) => {
-        const menuItem = menuItems.find((item: any) => item._id.toString() === cartItem.menuId);
-        if (!menuItem) throw new Error(`Menu item id not found`);
-        return {
-            price_data: {
-                currency: 'inr',
-                product_data: {
-                    name: menuItem.name,
-                    images: [menuItem.image],
-                },
-                unit_amount: menuItem.price * 100,
-            },
-            quantity: cartItem.quantity,
-        } as Stripe.Checkout.SessionCreateParams.LineItem;
-    });
-    return lineItems;
+    res.status(200).send("Received");
 };
