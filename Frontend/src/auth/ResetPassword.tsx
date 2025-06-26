@@ -43,7 +43,7 @@ const ResetPassword = () => {
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             placeholder="New Password"
-            className="pl-10 pr-10"
+            className="pl-10 pr-10 text-gray-900"
           />
           <LockKeyhole className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <button

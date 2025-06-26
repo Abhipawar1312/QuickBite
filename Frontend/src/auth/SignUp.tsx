@@ -106,7 +106,9 @@ const SignUp = () => {
               value={input.fullname}
               onChange={onChangeHandler}
               placeholder="Full Name"
-              className={`pl-10 ${errors?.fullname ? "border-red-500" : ""}`}
+              className={`pl-10 text-gray-900 ${
+                errors?.fullname ? "border-red-500" : ""
+              }`}
             />
             <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           </div>
@@ -124,7 +126,9 @@ const SignUp = () => {
               value={input.email}
               onChange={onChangeHandler}
               placeholder="Email"
-              className={`pl-10 ${errors?.email ? "border-red-500" : ""}`}
+              className={`pl-10 text-gray-900 ${
+                errors?.email ? "border-red-500" : ""
+              }`}
             />
             <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           </div>
@@ -142,7 +146,7 @@ const SignUp = () => {
               value={input.password}
               onChange={onChangeHandler}
               placeholder="Password"
-              className={`pl-10 pr-10 ${
+              className={`pl-10 pr-10 text-gray-900 ${
                 errors?.password ? "border-red-500" : ""
               }`}
             />
@@ -170,7 +174,9 @@ const SignUp = () => {
               value={input.contact}
               onChange={onChangeHandler}
               placeholder="Contact Number"
-              className={`pl-10 ${errors?.contact ? "border-red-500" : ""}`}
+              className={`pl-10 text-gray-900 ${
+                errors?.contact ? "border-red-500" : ""
+              }`}
             />
             <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           </div>

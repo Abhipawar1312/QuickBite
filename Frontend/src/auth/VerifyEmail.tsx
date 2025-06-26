@@ -28,7 +28,7 @@ const VerifyEmail = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md bg-white border border-gray-200 rounded-2xl shadow-md p-8">
+      <div className="w-full max-w-md border border-gray-200 rounded-2xl shadow-md p-8 bg-white">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800">Verify Email</h1>
           <p className="text-sm text-gray-500 mt-1">
@@ -43,10 +43,15 @@ const VerifyEmail = () => {
               value={otp}
               onChange={(value: SetStateAction<string>) => setOtp(value)}
               pattern={REGEXP_ONLY_DIGITS_AND_CHARS}
+              className="text-black"
             >
-              <InputOTPGroup>
+              <InputOTPGroup className="gap-2">
                 {[...Array(6)].map((_, i) => (
-                  <InputOTPSlot key={i} index={i} />
+                  <InputOTPSlot
+                    key={i}
+                    index={i}
+                    className="w-10 h-12 bg-white border border-gray-300 text-black text-xl text-center rounded-md focus:outline-none focus:border-blue-500"
+                  />
                 ))}
               </InputOTPGroup>
             </InputOTP>
@@ -55,7 +60,7 @@ const VerifyEmail = () => {
           {loading ? (
             <Button
               disabled
-              className="w-full  text-white  bg-sky-blue hover:bg-sky-blue"
+              className="w-full text-white bg-sky-blue hover:bg-sky-blue"
             >
               <Loader2 className="w-4 h-4 animate-spin mr-2" />
               Verifying...
@@ -63,7 +68,7 @@ const VerifyEmail = () => {
           ) : (
             <Button
               type="submit"
-              className="w-full  text-white  bg-sky-blue hover:bg-sky-blue"
+              className="w-full text-white bg-sky-blue hover:bg-sky-blue"
             >
               Verify
             </Button>

@@ -152,16 +152,14 @@
   background-color: #87CEEB; /* deep sky blue color */
 }
 
-/* Autofill styling */
-/* Light mode autofill fix */
-:root {
+
+/* :root {
   --input-bg-color: white;
   --input-text-color: black;
 }
 
-/* Dark mode autofill fix */
 .dark {
-  --input-bg-color: #1f2937; /* or whatever matches your dark bg */
+  --input-bg-color: #1f2937; 
   --input-text-color: white;
 }
 
@@ -173,8 +171,7 @@ input:-webkit-autofill {
   transition: background-color 5000s ease-in-out 0s;
 }
 
-/* Normal input text color (respects theme) */
 input {
   color: var(--input-text-color) !important;
-}
+} */
 

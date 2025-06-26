@@ -103,7 +103,7 @@ const Profile = () => {
               placeholder="Enter Your Email"
               value={profileData.email}
               onChange={changeHandler}
-              className="w-full text-gray-600 bg-transparent focus-visible:ring-0 focus-visible:border-transparent outline-none border-none shadow-lg"
+              className="w-full  bg-transparent focus-visible:ring-0 focus-visible:border-transparent outline-none border-none shadow-lg"
             />
           </div>
         </div>
@@ -116,7 +116,7 @@ const Profile = () => {
               placeholder="Enter your address"
               value={profileData.address}
               onChange={changeHandler}
-              className="w-full text-gray-600 bg-transparent focus-visible:ring-0 focus-visible:border-transparent outline-none border-none shadow-lg"
+              className="w-full  bg-transparent focus-visible:ring-0 focus-visible:border-transparent outline-none border-none shadow-lg"
             />
           </div>
         </div>
@@ -129,7 +129,7 @@ const Profile = () => {
               placeholder="Enter your city"
               value={profileData.city}
               onChange={changeHandler}
-              className="w-full text-gray-600 bg-transparent focus-visible:ring-0 focus-visible:border-transparent outline-none border-none shadow-lg"
+              className="w-full  bg-transparent focus-visible:ring-0 focus-visible:border-transparent outline-none border-none shadow-lg"
             />
           </div>
         </div>
@@ -142,7 +142,7 @@ const Profile = () => {
               placeholder="Enter your country"
               value={profileData.country}
               onChange={changeHandler}
-              className="w-full text-gray-600 bg-transparent focus-visible:ring-0 focus-visible:border-transparent outline-none border-none shadow-lg"
+              className="w-full  bg-transparent focus-visible:ring-0 focus-visible:border-transparent outline-none border-none shadow-lg"
             />
           </div>
         </div>
