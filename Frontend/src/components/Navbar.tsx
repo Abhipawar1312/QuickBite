@@ -6,22 +6,15 @@ import {
   MenubarMenu,
   MenubarTrigger,
 } from "./ui/menubar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
+
 import { Button } from "./ui/button";
 import {
   HandPlatter,
   Loader2,
   Menu,
-  Moon,
   PackageCheck,
   ShoppingCart,
   SquareMenu,
-  Sun,
   User,
   UtensilsCrossed,
 } from "lucide-react";
@@ -40,13 +33,11 @@ import {
 import { Separator } from "./ui/separator";
 import { useUserStore } from "@/store/useUserStore";
 import { useCartStore } from "@/store/useCartStore";
-import { useThemeStore } from "@/store/useThemeStore";
 import DarkMode from "./Darkmode";
 
 const Navbar = () => {
   const { user, loading, logout } = useUserStore();
   const { cart } = useCartStore();
-  const { setTheme } = useThemeStore();
 
   return (
     <div className="max-w-7xl mx-auto">
