@@ -25,7 +25,7 @@ const Profile = () => {
     country: user?.country || "",
     profilePicture: user?.profilePicture || "",
   });
-  // const isLoading = false;
+
   const [selectedProfilePicture, setSelectedProfilePicture] = useState<string>(
     user?.profilePicture || ""
   );
@@ -61,13 +61,29 @@ const Profile = () => {
       reader.readAsDataURL(file);
     }
   };
+
   return (
-    <form onSubmit={updateProfileHandler} className="max-w-7xl mx-auto my-5">
+    <form
+      onSubmit={updateProfileHandler}
+      className="max-w-7xl mx-auto py-16 px-4"
+    >
+      <h1 className="text-4xl font-extrabold text-center mb-12">
+        Your Profile
+      </h1>
+
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Avatar className="relative md:w-28 md:h-28 w-20 h-20">
             <AvatarImage src={selectedProfilePicture} />
-            <AvatarFallback>CN</AvatarFallback>
+            <AvatarFallback>
+              {user?.fullname
+                ? user.fullname
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .toUpperCase()
+                : "NA"}
+            </AvatarFallback>
             <Input
               ref={imageRef}
               className="hidden"
@@ -92,6 +108,7 @@ const Profile = () => {
           />
         </div>
       </div>
+
       <div className="grid md:grid-cols-4 md:gap-2 gap-3 my-10">
         <div className="flex items-center gap-4 rounded-sm p-2 ">
           <Mail className="text-gray-500" />
@@ -103,7 +120,7 @@ const Profile = () => {
               placeholder="Enter Your Email"
               value={profileData.email}
               onChange={changeHandler}
-              className="w-full  bg-transparent focus-visible:ring-0 focus-visible:border-transparent outline-none border-none shadow-lg"
+              className="w-full bg-transparent focus-visible:ring-0 focus-visible:border-transparent outline-none border-none shadow-lg"
             />
           </div>
         </div>
@@ -116,7 +133,7 @@ const Profile = () => {
               placeholder="Enter your address"
               value={profileData.address}
               onChange={changeHandler}
-              className="w-full  bg-transparent focus-visible:ring-0 focus-visible:border-transparent outline-none border-none shadow-lg"
+              className="w-full bg-transparent focus-visible:ring-0 focus-visible:border-transparent outline-none border-none shadow-lg"
             />
           </div>
         </div>
@@ -129,7 +146,7 @@ const Profile = () => {
               placeholder="Enter your city"
               value={profileData.city}
               onChange={changeHandler}
-              className="w-full  bg-transparent focus-visible:ring-0 focus-visible:border-transparent outline-none border-none shadow-lg"
+              className="w-full bg-transparent focus-visible:ring-0 focus-visible:border-transparent outline-none border-none shadow-lg"
             />
           </div>
         </div>
@@ -142,11 +159,12 @@ const Profile = () => {
               placeholder="Enter your country"
               value={profileData.country}
               onChange={changeHandler}
-              className="w-full  bg-transparent focus-visible:ring-0 focus-visible:border-transparent outline-none border-none shadow-lg"
+              className="w-full bg-transparent focus-visible:ring-0 focus-visible:border-transparent outline-none border-none shadow-lg"
             />
           </div>
         </div>
       </div>
+
       <div className="text-center">
         {isLoading ? (
           <Button disabled className="bg-sky-blue hover:bg-sky-blue">
