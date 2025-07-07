@@ -34,6 +34,7 @@ import { Separator } from "./ui/separator";
 import { useUserStore } from "@/store/useUserStore";
 import { useCartStore } from "@/store/useCartStore";
 import DarkMode from "./Darkmode";
+import Icon from "../assets/Icon.png";
 
 const Navbar = () => {
   const { user, loading, logout } = useUserStore();
@@ -42,9 +43,15 @@ const Navbar = () => {
   return (
     <div className="max-w-7xl mx-auto">
       <div className="flex items-center justify-between h-14">
-        <Link to="/">
+        <Link to="/" className="flex items-center gap-2">
+          <img
+            src={Icon}
+            alt="QuickBite Logo"
+            className="h-10 w-10 object-contain"
+          />
           <h1 className="font-bold md:font-extrabold text-2xl">QuickBite</h1>
         </Link>
+
         <div className="hidden md:flex items-center gap-10">
           <div className="hidden md:flex items-center gap-6">
             <Link to="/">Home</Link>
@@ -165,6 +172,11 @@ const MobileNavbar = () => {
       </div>
       <SheetContent className="flex flex-col">
         <SheetHeader className="flex flex-row items-center justify-between mt-2">
+          <img
+            src={Icon}
+            alt="QuickBite Logo"
+            className="h-10 w-10 object-contain"
+          />
           <SheetTitle>QuickBite</SheetTitle>
         </SheetHeader>
 
