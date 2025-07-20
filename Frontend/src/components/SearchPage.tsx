@@ -10,7 +10,6 @@ import { Card, CardContent, CardFooter } from "./ui/card";
 import { AspectRatio } from "./ui/aspect-ratio";
 import { Skeleton } from "./ui/skeleton";
 import { useRestaurantStore } from "@/store/useRestaurantStore";
-import { Restaurant } from "@/types/restaurantType";
 import { motion } from "framer-motion";
 
 const SearchPage = () => {
@@ -88,7 +87,7 @@ const SearchPage = () => {
             {loading ? (
               <SearchPageSkeleton />
             ) : searchedRestaurant?.data.length === 0 ? (
-              <NoResultFound searchText={params.text!} />
+              <NoResultFound />
             ) : (
               searchedRestaurant?.data.map((restaurant) => (
                 <Card
@@ -166,7 +165,7 @@ const SearchPageSkeleton = () => (
   </>
 );
 
-const NoResultFound = ({ searchText }: { searchText: string }) => (
+const NoResultFound = () => (
   <div className="text-center col-span-full">
     <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
       No results found
