@@ -1,3 +1,4 @@
+// Redesigned UI with same functionality
 import { useRestaurantStore } from "@/store/useRestaurantStore";
 import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
@@ -18,31 +19,38 @@ const filterOptions: FilterOptionsState[] = [
 const FilterPage = () => {
   const { setAppliedFilter, appliedFilter, resetAppliedFilter } =
     useRestaurantStore();
+
   const appliedFilterHandler = (value: string) => {
     setAppliedFilter(value);
-    // alert(value)
   };
 
   return (
-    <div className="md:w-72">
-      <div className="flex items-center justify-between">
-        <h1 className="font-medium text-lg">Filter by cuisines</h1>
-        <Button variant={"link"} onClick={resetAppliedFilter}>
+    <div className="bg-white dark:bg-gray-800 shadow-md rounded-2xl p-6 top-6">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">
+          Filter by Cuisine
+        </h2>
+        <Button variant="link" className="text-sm" onClick={resetAppliedFilter}>
           Reset
         </Button>
       </div>
-      {filterOptions.map((option) => (
-        <div key={option.id} className="flex items-center space-x-2 my-5">
-          <Checkbox
-            id={option.id}
-            checked={appliedFilter.includes(option.label)}
-            onClick={() => appliedFilterHandler(option.label)}
-          />
-          <Label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-            {option.label}
-          </Label>
-        </div>
-      ))}
+      <div className="space-y-4">
+        {filterOptions.map((option) => (
+          <div key={option.id} className="flex items-center gap-3">
+            <Checkbox
+              id={option.id}
+              checked={appliedFilter.includes(option.label)}
+              onClick={() => appliedFilterHandler(option.label)}
+            />
+            <Label
+              htmlFor={option.id}
+              className="text-sm text-gray-700 dark:text-gray-300"
+            >
+              {option.label}
+            </Label>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

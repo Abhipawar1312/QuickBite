@@ -41,6 +41,7 @@ export const createCheckoutSession = async (req: Request, res: Response): Promis
         const body = req.body as CheckoutSessionRequest;
         const userId = (req as any).id;
 
+        console.log("createCheckoutSession body:", body);
         // 1️⃣ Fetch restaurant and its menus (if needed)
         const restaurant = await Restaurant.findById(body.restaurantId).populate("menus");
         if (!restaurant) {
