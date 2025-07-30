@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { type LoginInputState, userLoginSchema } from "@/schema/userSchema";
 import { useUserStore } from "@/store/useUserStore";
 import { motion } from "framer-motion";
+import Icon from "../assets/Icon.png";
 
 const Login = () => {
   const [input, setInput] = useState<LoginInputState>({
@@ -112,7 +113,7 @@ const Login = () => {
                 <motion.img
                   whileHover={{ rotate: 360 }}
                   transition={{ duration: 0.8, ease: "easeInOut" }}
-                  src="/src/assets/Icon.png"
+                  src={Icon}
                   alt="QuickBite Logo"
                   className="h-10 w-10 object-contain drop-shadow-lg"
                 />

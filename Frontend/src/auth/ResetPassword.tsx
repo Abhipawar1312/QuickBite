@@ -9,6 +9,7 @@ import { Loader2, LockKeyhole, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
+import Icon from "../assets/Icon.png";
 
 const ResetPassword = () => {
   const [newPassword, setNewPassword] = useState<string>("");
@@ -77,7 +78,7 @@ const ResetPassword = () => {
               <motion.img
                 whileHover={{ rotate: 360 }}
                 transition={{ duration: 0.8, ease: "easeInOut" }}
-                src="/src/assets/Icon.png"
+                src={Icon}
                 alt="QuickBite Logo"
                 className="h-10 w-10 object-contain drop-shadow-lg"
               />

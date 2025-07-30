@@ -17,6 +17,7 @@ import {
 import { type ChangeEvent, type FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import Icon from "../assets/Icon.png";
 
 const SignUp = () => {
   const [input, setInput] = useState<SignupInputState>({
@@ -146,7 +147,7 @@ const SignUp = () => {
                 <motion.img
                   whileHover={{ rotate: 360 }}
                   transition={{ duration: 0.8, ease: "easeInOut" }}
-                  src="/src/assets/Icon.png"
+                  src={Icon}
                   alt="QuickBite Logo"
                   className="h-10 w-10 object-contain drop-shadow-lg"
                 />

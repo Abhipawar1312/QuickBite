@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/input-otp";
 import { REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
 import { motion } from "framer-motion";
+import Icon from "../assets/Icon.png";
 
 const VerifyEmail = () => {
   const [otp, setOtp] = useState("");
@@ -80,7 +81,7 @@ const VerifyEmail = () => {
               <motion.img
                 whileHover={{ rotate: 360 }}
                 transition={{ duration: 0.8, ease: "easeInOut" }}
-                src="/src/assets/Icon.png"
+                src={Icon}
                 alt="QuickBite Logo"
                 className="h-10 w-10 object-contain drop-shadow-lg"
               />
