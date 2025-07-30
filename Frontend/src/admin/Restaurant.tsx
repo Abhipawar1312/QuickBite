@@ -1,13 +1,26 @@
+"use client";
+
+import type React from "react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  RestaurantFormSchema,
+  type RestaurantFormSchema,
   restaurantFromSchema,
 } from "@/schema/RestaurantSchema";
 import { useRestaurantStore } from "@/store/useRestaurantStore";
-import { Loader2 } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import {
+  Loader2,
+  Store,
+  MapPin,
+  Globe,
+  Clock,
+  ChefHat,
+  ImageIcon,
+} from "lucide-react";
+import { type FormEvent, useEffect, useState } from "react";
+import { motion } from "framer-motion";
 
 const Restaurant = () => {
   const {
@@ -25,7 +38,6 @@ const Restaurant = () => {
     cuisines: [],
     imageFile: undefined,
   });
-
   const [errors, setErrors] = useState<Partial<RestaurantFormSchema>>({});
 
   const changeEventHandler = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -35,7 +47,6 @@ const Restaurant = () => {
 
   const submitHandler = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
     const result = restaurantFromSchema.safeParse(input);
     if (!result.success) {
       const fieldErrors = result.error.formErrors.fieldErrors;
@@ -49,11 +60,9 @@ const Restaurant = () => {
       formData.append("country", input.country);
       formData.append("deliveryTime", input.deliveryTime.toString());
       formData.append("cuisines", JSON.stringify(input.cuisines));
-
       if (input.imageFile) {
         formData.append("imageFile", input.imageFile);
       }
-
       if (restaurant) {
         // update
         await updateRestaurant(formData);
@@ -85,129 +94,216 @@ const Restaurant = () => {
     fetchRestaurant();
   }, []);
 
+  const formFields = [
+    {
+      name: "restaurantName",
+      label: "Restaurant Name",
+      icon: Store,
+      placeholder: "Enter your restaurant name",
+    },
+    {
+      name: "city",
+      label: "City",
+      icon: MapPin,
+      placeholder: "Enter your city name",
+    },
+    {
+      name: "country",
+      label: "Country",
+      icon: Globe,
+      placeholder: "Enter your country name",
+    },
+    {
+      name: "deliveryTime",
+      label: "Delivery Time (minutes)",
+      icon: Clock,
+      placeholder: "Enter delivery time",
+      type: "number",
+    },
+  ];
+
   return (
-    <div className="max-w-6xl mx-auto my-10">
-      <div>
-        <div>
-          <h1 className="font-extrabold text-2xl mb-5">Add Restaurants</h1>
-          <form onSubmit={submitHandler}>
-            <div className="md:grid grid-cols-2 gap-6 space-y-2 md:space-y-0">
-              {/* Restaurant Name  */}
-              <div>
-                <Label>Restaurant Name</Label>
-                <Input
-                  type="text"
-                  name="restaurantName"
-                  value={input.restaurantName}
-                  onChange={changeEventHandler}
-                  placeholder="Enter your restaurant name"
-                />
-                {errors && (
-                  <span className="text-xs text-red-600 font-medium">
-                    {errors.restaurantName}
-                  </span>
-                )}
-              </div>
-              <div>
-                <Label>City</Label>
-                <Input
-                  type="text"
-                  name="city"
-                  value={input.city}
-                  onChange={changeEventHandler}
-                  placeholder="Enter your city name"
-                />
-                {errors && (
-                  <span className="text-xs text-red-600 font-medium">
-                    {errors.city}
-                  </span>
-                )}
-              </div>
-              <div>
-                <Label>Country</Label>
-                <Input
-                  type="text"
-                  name="country"
-                  value={input.country}
-                  onChange={changeEventHandler}
-                  placeholder="Enter your country name"
-                />
-                {errors && (
-                  <span className="text-xs text-red-600 font-medium">
-                    {errors.country}
-                  </span>
-                )}
-              </div>
-              <div>
-                <Label>Delivery Time</Label>
-                <Input
-                  type="number"
-                  name="deliveryTime"
-                  value={input.deliveryTime}
-                  onChange={changeEventHandler}
-                  placeholder="Enter your delivery time"
-                />
-                {errors && (
-                  <span className="text-xs text-red-600 font-medium">
-                    {errors.deliveryTime}
-                  </span>
-                )}
-              </div>
-              <div>
-                <Label>Cuisines</Label>
-                <Input
-                  type="text"
-                  name="cuisines"
-                  value={input.cuisines}
-                  onChange={(e) =>
-                    setInput({ ...input, cuisines: e.target.value.split(",") })
-                  }
-                  placeholder="e.g. Momos, Biryani"
-                />
-                {errors && (
-                  <span className="text-xs text-red-600 font-medium">
-                    {errors.cuisines}
-                  </span>
-                )}
-              </div>
-              <div>
-                <Label>Upload Restaurant Banner</Label>
-                <Input
-                  onChange={(e) =>
-                    setInput({
-                      ...input,
-                      imageFile: e.target.files?.[0] || undefined,
-                    })
-                  }
-                  type="file"
-                  accept="image/*"
-                  name="imageFile"
-                />
-                {errors && (
-                  <span className="text-xs text-red-600 font-medium">
-                    {errors.imageFile?.name}
-                  </span>
-                )}
-              </div>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+      className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 py-8 px-4"
+    >
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="text-center mb-12"
+        >
+          <div className="w-20 h-20 bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <Store className="w-10 h-10 text-white" />
+          </div>
+          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent mb-4">
+            {restaurant ? "Update Restaurant" : "Add Restaurant"}
+          </h1>
+          <p className="text-lg text-slate-600 dark:text-slate-400">
+            {restaurant
+              ? "Update your restaurant information"
+              : "Set up your restaurant profile to get started"}
+          </p>
+        </motion.div>
+
+        {/* Form */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="bg-white dark:bg-slate-800 shadow-2xl rounded-3xl p-8 border border-slate-200 dark:border-slate-700"
+        >
+          <form onSubmit={submitHandler} className="space-y-8">
+            {/* Basic Info Grid */}
+            <div className="grid md:grid-cols-2 gap-6">
+              {formFields.map((field, index) => {
+                const Icon = field.icon;
+                return (
+                  <motion.div
+                    key={field.name}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4 + index * 0.1 }}
+                    className="space-y-2"
+                  >
+                    <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                      <Icon className="w-4 h-4 text-orange-500" />
+                      {field.label}
+                    </Label>
+                    <Input
+                      type={field.type || "text"}
+                      name={field.name}
+                      value={
+                        input[field.name as keyof RestaurantFormSchema] as
+                          | string
+                          | number
+                      }
+                      onChange={changeEventHandler}
+                      placeholder={field.placeholder}
+                      className="h-12 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-orange-500 focus:ring-2 focus:ring-orange-200 dark:focus:ring-orange-800 transition-all duration-300"
+                    />
+                    {errors &&
+                      errors[field.name as keyof RestaurantFormSchema] && (
+                        <motion.span
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="text-xs text-red-600 font-medium"
+                        >
+                          {
+                            errors[
+                              field.name as keyof RestaurantFormSchema
+                            ] as string
+                          }
+                        </motion.span>
+                      )}
+                  </motion.div>
+                );
+              })}
             </div>
-            <div className="my-5 w-fit">
+
+            {/* Cuisines */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.8 }}
+              className="space-y-2"
+            >
+              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                <ChefHat className="w-4 h-4 text-orange-500" />
+                Cuisines
+              </Label>
+              <Input
+                type="text"
+                name="cuisines"
+                value={input.cuisines}
+                onChange={(e) =>
+                  setInput({ ...input, cuisines: e.target.value.split(",") })
+                }
+                placeholder="e.g. Momos, Biryani, Chinese"
+                className="h-12 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-orange-500 focus:ring-2 focus:ring-orange-200 dark:focus:ring-orange-800 transition-all duration-300"
+              />
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Separate multiple cuisines with commas
+              </p>
+              {errors && (
+                <motion.span
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-xs text-red-600 font-medium"
+                >
+                  {errors.cuisines}
+                </motion.span>
+              )}
+            </motion.div>
+
+            {/* Image Upload */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.9 }}
+              className="space-y-2"
+            >
+              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-orange-500" />
+                Upload Restaurant Banner
+              </Label>
+              <Input
+                onChange={(e) =>
+                  setInput({
+                    ...input,
+                    imageFile: e.target.files?.[0] || undefined,
+                  })
+                }
+                type="file"
+                accept="image/*"
+                name="imageFile"
+                className="h-12 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-orange-500 transition-all duration-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
+              />
+              {errors && (
+                <motion.span
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-xs text-red-600 font-medium"
+                >
+                  {errors.imageFile?.name}
+                </motion.span>
+              )}
+            </motion.div>
+
+            {/* Submit Button */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.0 }}
+              className="pt-6"
+            >
               {loading ? (
-                <Button disabled className="bg-sky-blue hover:bg-sky-blue">
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Button
+                  disabled
+                  className="w-full sm:w-auto h-12 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-8 rounded-xl font-semibold"
+                >
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                   Please wait
                 </Button>
               ) : (
-                <Button className="bg-sky-blue hover:bg-sky-blue">
-                  {restaurant
-                    ? "Update Your Restaurant"
-                    : "Add Your Restaurant"}
-                </Button>
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <Button className="w-full sm:w-auto h-12 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-8 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300">
+                    {restaurant ? "Update Restaurant" : "Add Restaurant"}
+                  </Button>
+                </motion.div>
               )}
-            </div>
+            </motion.div>
           </form>
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

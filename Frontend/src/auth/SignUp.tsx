@@ -1,7 +1,9 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { SignupInputState, userSignupSchema } from "@/schema/userSchema";
+import { type SignupInputState, userSignupSchema } from "@/schema/userSchema";
 import { useUserStore } from "@/store/useUserStore";
 import {
   Eye,
@@ -12,8 +14,9 @@ import {
   Phone,
   User,
 } from "lucide-react";
-import { ChangeEvent, FormEvent, useState } from "react";
+import { type ChangeEvent, type FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 
 const SignUp = () => {
   const [input, setInput] = useState<SignupInputState>({
@@ -22,7 +25,6 @@ const SignUp = () => {
     password: "",
     contact: "",
   });
-
   const [errors, setErrors] = useState<Partial<SignupInputState>>({});
   const [showPassword, setShowPassword] = useState(false);
   const { signup, loading } = useUserStore();
@@ -34,26 +36,17 @@ const SignUp = () => {
       ...input,
       [name]: value,
     });
-
     // Validate only the current field
     const singleFieldSchema =
       userSignupSchema.shape[name as keyof SignupInputState];
-
     if (singleFieldSchema) {
       const result = singleFieldSchema.safeParse(value);
-
-      // setErrors((prevErrors) => ({
-      //   ...prevErrors,
-      //   [name]: result.success ? undefined : prevErrors[name],
-      // }));
-
       setErrors((prevErrors) => ({
         ...prevErrors,
         [name as keyof SignupInputState]: result.success
           ? undefined
           : prevErrors[name as keyof SignupInputState],
       }));
-
       // Optional: if you want to update the error with new message if still invalid
       setErrors((prevErrors) => ({
         ...prevErrors,
@@ -70,7 +63,6 @@ const SignUp = () => {
       setErrors(fieldErrors as Partial<SignupInputState>);
       return;
     }
-
     try {
       await signup(input);
       navigate("/verify-email");
@@ -86,134 +78,212 @@ const SignUp = () => {
     }
   };
 
+  const formFields = [
+    { name: "fullname", icon: User, placeholder: "Full Name", type: "text" },
+    { name: "email", icon: Mail, placeholder: "Email", type: "email" },
+    {
+      name: "password",
+      icon: LockKeyhole,
+      placeholder: "Password",
+      type: "password",
+    },
+    {
+      name: "contact",
+      icon: Phone,
+      placeholder: "Contact Number",
+      type: "number",
+    },
+  ];
+
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
-      <form
-        onSubmit={onSubmitHandler}
-        className="w-full max-w-md bg-white border border-gray-200 shadow-md rounded-2xl p-8"
+    <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-orange-50 via-white to-orange-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 overflow-hidden">
+        <motion.div
+          animate={{
+            x: [0, 100, 0],
+            y: [0, -100, 0],
+            rotate: [0, 180, 360],
+          }}
+          transition={{
+            duration: 20,
+            repeat: Number.POSITIVE_INFINITY,
+            ease: "linear",
+          }}
+          className="absolute top-20 left-20 w-32 h-32 bg-orange-200/20 dark:bg-orange-800/20 rounded-full blur-xl"
+        />
+        <motion.div
+          animate={{
+            x: [0, -150, 0],
+            y: [0, 100, 0],
+            rotate: [0, -180, -360],
+          }}
+          transition={{
+            duration: 25,
+            repeat: Number.POSITIVE_INFINITY,
+            ease: "linear",
+          }}
+          className="absolute bottom-20 right-20 w-40 h-40 bg-blue-200/20 dark:bg-blue-800/20 rounded-full blur-xl"
+        />
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.6 }}
+        className="w-full max-w-md relative z-10"
       >
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">QuickBite</h1>
-          <p className="text-sm text-gray-500 mt-1">Create your account</p>
-        </div>
-
-        {/* Full Name */}
-        <div className="mb-5">
-          <div className="relative">
-            <Input
-              type="text"
-              name="fullname"
-              value={input.fullname}
-              onChange={onChangeHandler}
-              placeholder="Full Name"
-              className={`pl-10 text-gray-900 ${
-                errors?.fullname ? "border-red-500" : ""
-              }`}
-            />
-            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-          </div>
-          {errors?.fullname && (
-            <p className="mt-1 text-xs text-red-500">{errors.fullname}</p>
-          )}
-        </div>
-
-        {/* Email */}
-        <div className="mb-5">
-          <div className="relative">
-            <Input
-              type="email"
-              name="email"
-              value={input.email}
-              onChange={onChangeHandler}
-              placeholder="Email"
-              className={`pl-10 text-gray-900 ${
-                errors?.email ? "border-red-500" : ""
-              }`}
-            />
-            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-          </div>
-          {errors?.email && (
-            <p className="mt-1 text-xs text-red-500">{errors.email}</p>
-          )}
-        </div>
-
-        {/* Password */}
-        <div className="mb-5">
-          <div className="relative">
-            <Input
-              type={showPassword ? "text" : "password"}
-              name="password"
-              value={input.password}
-              onChange={onChangeHandler}
-              placeholder="Password"
-              className={`pl-10 pr-10 text-gray-900 ${
-                errors?.password ? "border-red-500" : ""
-              }`}
-            />
-            <LockKeyhole className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 cursor-pointer"
-              tabIndex={-1}
+        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border border-white/20 dark:border-slate-700/50 shadow-2xl rounded-3xl p-8">
+          <form onSubmit={onSubmitHandler} className="space-y-6">
+            {/* Header */}
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="text-center mb-8"
             >
-              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-            </button>
-          </div>
-          {errors?.password && (
-            <p className="mt-1 text-xs text-red-500">{errors.password}</p>
-          )}
-        </div>
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <motion.img
+                  whileHover={{ rotate: 360 }}
+                  transition={{ duration: 0.8, ease: "easeInOut" }}
+                  src="/src/assets/Icon.png"
+                  alt="QuickBite Logo"
+                  className="h-10 w-10 object-contain drop-shadow-lg"
+                />
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-orange-500 bg-clip-text text-transparent">
+                  QuickBite
+                </h1>
+              </div>
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Create your account
+              </p>
+            </motion.div>
 
-        {/* Contact Number */}
-        <div className="mb-6">
-          <div className="relative">
-            <Input
-              type="number"
-              name="contact"
-              value={input.contact}
-              onChange={onChangeHandler}
-              placeholder="Contact Number"
-              className={`pl-10 text-gray-900 ${
-                errors?.contact ? "border-red-500" : ""
-              }`}
-            />
-            <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-          </div>
-          {errors?.contact && (
-            <p className="mt-1 text-xs text-red-500">{errors.contact}</p>
-          )}
-        </div>
+            {/* Form Fields */}
+            {formFields.map((field, index) => {
+              const Icon = field.icon;
+              const isPassword = field.name === "password";
+              return (
+                <motion.div
+                  key={field.name}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3 + index * 0.1 }}
+                  className="space-y-2"
+                >
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
+                      <Icon className="h-5 w-5 text-slate-400 group-focus-within:text-orange-500 transition-colors duration-300" />
+                    </div>
+                    <Input
+                      type={
+                        isPassword
+                          ? showPassword
+                            ? "text"
+                            : "password"
+                          : field.type
+                      }
+                      name={field.name}
+                      value={input[field.name as keyof SignupInputState]}
+                      onChange={onChangeHandler}
+                      placeholder={field.placeholder}
+                      className={`${
+                        isPassword ? "pl-12 pr-12" : "pl-12 pr-4"
+                      } py-3 h-12 bg-white dark:bg-slate-900 border-2 rounded-xl focus:border-orange-500 focus:ring-2 focus:ring-orange-200 dark:focus:ring-orange-800 transition-all duration-300 text-slate-900 dark:text-white placeholder:text-slate-500 ${
+                        errors?.[field.name as keyof SignupInputState]
+                          ? "border-red-500 focus:border-red-500 focus:ring-red-200"
+                          : "border-slate-200 dark:border-slate-700"
+                      }`}
+                    />
+                    {isPassword && (
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors duration-300 z-10"
+                        tabIndex={-1}
+                      >
+                        {showPassword ? (
+                          <EyeOff size={20} />
+                        ) : (
+                          <Eye size={20} />
+                        )}
+                      </button>
+                    )}
+                    <motion.div
+                      className="absolute inset-0 rounded-xl bg-gradient-to-r from-orange-500/10 to-orange-600/10 opacity-0 group-focus-within:opacity-100 transition-opacity duration-300 pointer-events-none"
+                      layoutId={`inputGlow${index}`}
+                    />
+                  </div>
+                  {errors?.[field.name as keyof SignupInputState] && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-xs text-red-500 ml-1"
+                    >
+                      {errors[field.name as keyof SignupInputState]}
+                    </motion.p>
+                  )}
+                </motion.div>
+              );
+            })}
 
-        {/* Submit Button */}
-        <div className="mb-6">
-          {loading ? (
-            <Button className="w-full bg-sky-blue hover:bg-sky-blue" disabled>
-              <Loader2 className="animate-spin mr-2 h-4 w-4" />
-              Signing up...
-            </Button>
-          ) : (
-            <Button
-              type="submit"
-              className="w-full bg-sky-blue hover:bg-sky-blue text-white"
+            {/* Submit Button */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7 }}
             >
-              Sign Up
-            </Button>
-          )}
+              {loading ? (
+                <Button
+                  className="w-full h-12 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold rounded-xl shadow-lg transition-all duration-300"
+                  disabled
+                >
+                  <Loader2 className="animate-spin mr-2 h-5 w-5" />
+                  Signing up...
+                </Button>
+              ) : (
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <Button
+                    type="submit"
+                    className="w-full h-12 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                  >
+                    Sign Up
+                  </Button>
+                </motion.div>
+              )}
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8 }}
+            >
+              <Separator className="bg-slate-200 dark:bg-slate-700" />
+            </motion.div>
+
+            {/* Login link */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.9 }}
+              className="text-center"
+            >
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Already have an account?{" "}
+                <Link
+                  to="/login"
+                  className="text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 font-medium transition-colors duration-300"
+                >
+                  Login
+                </Link>
+              </p>
+            </motion.div>
+          </form>
         </div>
-
-        <Separator />
-
-        <p className="text-center mt-4 text-sm text-gray-600">
-          Already have an account?{" "}
-          <Link
-            to="/login"
-            className="text-blue-600 font-medium hover:underline"
-          >
-            Login
-          </Link>
-        </p>
-      </form>
+      </motion.div>
     </div>
   );
 };
