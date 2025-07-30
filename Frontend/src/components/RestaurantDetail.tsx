@@ -1,6 +1,11 @@
 "use client";
 
-import { Timer, MapPin, Star, Sparkles } from "lucide-react";
+import {
+  Timer,
+  MapPin,
+  // Star,
+  Sparkles,
+} from "lucide-react";
 import { Badge } from "./ui/badge";
 import AvailableMenu from "./AvailableMenu";
 import { useRestaurantStore } from "@/store/useRestaurantStore";
