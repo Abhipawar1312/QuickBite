@@ -50,12 +50,17 @@ const AddMenu = () => {
 
   const submitHandler = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    // Clear previous errors
+    setError({});
+
     const result = menuSchema.safeParse(input);
     if (!result.success) {
       const fieldErrors = result.error.formErrors.fieldErrors;
       setError(fieldErrors as Partial<MenuFormSchema>);
       return;
     }
+
     try {
       const formData = new FormData();
       formData.append("name", input.name);
@@ -64,9 +69,36 @@ const AddMenu = () => {
       if (input.image) {
         formData.append("image", input.image);
       }
+
+      // Wait for the create operation to complete
       await createMenu(formData);
+
+      // Close dialog and reset form on success
+      setOpen(false);
+      setInput({
+        name: "",
+        description: "",
+        price: 0,
+        image: undefined,
+      });
+      setError({});
     } catch (error) {
       console.log(error);
+      // You might want to show an error message to the user here
+    }
+  };
+
+  // Reset form when dialog opens
+  const handleDialogOpen = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (isOpen) {
+      setInput({
+        name: "",
+        description: "",
+        price: 0,
+        image: undefined,
+      });
+      setError({});
     }
   };
 
@@ -94,7 +126,7 @@ const AddMenu = () => {
             </p>
           </div>
 
-          <Dialog open={open} onOpenChange={setOpen}>
+          <Dialog open={open} onOpenChange={handleDialogOpen}>
             <DialogTrigger asChild>
               <motion.div
                 whileHover={{ scale: 1.05 }}
@@ -131,7 +163,7 @@ const AddMenu = () => {
                     placeholder="Enter menu name"
                     className="h-12 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-orange-500 focus:ring-2 focus:ring-orange-200 dark:focus:ring-orange-800 transition-all duration-300"
                   />
-                  {error && (
+                  {error.name && (
                     <motion.span
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -153,7 +185,7 @@ const AddMenu = () => {
                     placeholder="Enter menu description"
                     className="h-12 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-orange-500 focus:ring-2 focus:ring-orange-200 dark:focus:ring-orange-800 transition-all duration-300"
                   />
-                  {error && (
+                  {error.description && (
                     <motion.span
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -175,7 +207,7 @@ const AddMenu = () => {
                     placeholder="Enter menu price"
                     className="h-12 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-orange-500 focus:ring-2 focus:ring-orange-200 dark:focus:ring-orange-800 transition-all duration-300"
                   />
-                  {error && (
+                  {error.price && (
                     <motion.span
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -193,6 +225,7 @@ const AddMenu = () => {
                   <Input
                     type="file"
                     name="image"
+                    accept="image/*"
                     onChange={(e) =>
                       setInput({
                         ...input,
@@ -201,7 +234,7 @@ const AddMenu = () => {
                     }
                     className="h-12 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-orange-500 transition-all duration-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
                   />
-                  {error && (
+                  {error.image && (
                     <motion.span
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -215,6 +248,7 @@ const AddMenu = () => {
                   {loading ? (
                     <Button
                       disabled
+                      type="button"
                       className="w-full h-12 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-semibold"
                     >
                       <Loader2 className="mr-2 w-5 h-5 animate-spin" />
@@ -226,7 +260,10 @@ const AddMenu = () => {
                       whileTap={{ scale: 0.98 }}
                       className="w-full"
                     >
-                      <Button className="w-full h-12 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300">
+                      <Button
+                        type="submit"
+                        className="w-full h-12 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+                      >
                         Submit
                       </Button>
                     </motion.div>
@@ -242,7 +279,7 @@ const AddMenu = () => {
           <AnimatePresence>
             {restaurant?.menus.map((menu: any, idx: number) => (
               <motion.div
-                key={idx}
+                key={menu._id || idx}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}

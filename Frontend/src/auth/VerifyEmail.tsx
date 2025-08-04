@@ -151,7 +151,7 @@ const VerifyEmail = () => {
                 >
                   <Button
                     type="submit"
-                    className="w-full h-12 text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                    className="w-full h-12 text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 font-semibold rounded-xl shadow-lg hover:shadow-xl cursor-pointer transition-all duration-300"
                   >
                     Verify
                   </Button>
@@ -170,7 +170,7 @@ const VerifyEmail = () => {
             Didn't receive the code?{" "}
             <button
               type="button"
-              className="text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-300"
+              className="text-blue-600 dark:text-blue-400 font-medium hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-300 cursor-pointer"
               onClick={() => alert("Resend OTP logic goes here")}
             >
               Resend
@@ -187,7 +187,7 @@ const VerifyEmail = () => {
             <button
               type="button"
               onClick={() => navigate("/login")}
-              className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors duration-300 group"
+              className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors duration-300 group cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform duration-300" />
               Back to Login

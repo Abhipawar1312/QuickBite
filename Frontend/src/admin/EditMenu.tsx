@@ -51,12 +51,17 @@ const EditMenu = ({
 
   const submitHandler = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    // Clear previous errors
+    setError({});
+
     const result = menuSchema.safeParse(input);
     if (!result.success) {
       const fieldErrors = result.error.formErrors.fieldErrors;
       setError(fieldErrors as Partial<MenuFormSchema>);
       return;
     }
+
     try {
       const formData = new FormData();
       formData.append("name", input.name);
@@ -65,20 +70,37 @@ const EditMenu = ({
       if (input.image) {
         formData.append("image", input.image);
       }
+
+      // Wait for the edit operation to complete
       await editMenu(selectedMenu._id, formData);
+
+      // Close dialog and reset form on success
+      setEditOpen(false);
+      setInput({
+        name: "",
+        description: "",
+        price: 0,
+        image: undefined,
+      });
+      setError({});
     } catch (error) {
       console.log(error);
+      // You might want to show an error message to the user here
     }
   };
 
   useEffect(() => {
-    setInput({
-      name: selectedMenu?.name || "",
-      description: selectedMenu?.description || "",
-      price: selectedMenu?.price || 0,
-      image: undefined,
-    });
-  }, [selectedMenu]);
+    if (selectedMenu) {
+      setInput({
+        name: selectedMenu?.name || "",
+        description: selectedMenu?.description || "",
+        price: selectedMenu?.price || 0,
+        image: undefined,
+      });
+      // Clear errors when opening dialog
+      setError({});
+    }
+  }, [selectedMenu, editOpen]);
 
   return (
     <Dialog open={editOpen} onOpenChange={setEditOpen}>
@@ -112,7 +134,7 @@ const EditMenu = ({
                 placeholder="Enter menu name"
                 className="h-12 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 transition-all duration-300"
               />
-              {error && (
+              {error.name && (
                 <motion.span
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -134,7 +156,7 @@ const EditMenu = ({
                 placeholder="Enter menu description"
                 className="h-12 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 transition-all duration-300"
               />
-              {error && (
+              {error.description && (
                 <motion.span
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -157,7 +179,7 @@ const EditMenu = ({
                 placeholder="Enter menu price"
                 className="h-12 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 transition-all duration-300"
               />
-              {error && (
+              {error.price && (
                 <motion.span
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -175,6 +197,7 @@ const EditMenu = ({
               <Input
                 type="file"
                 name="image"
+                accept="image/*"
                 onChange={(e) =>
                   setInput({
                     ...input,
@@ -183,7 +206,7 @@ const EditMenu = ({
                 }
                 className="h-12 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-blue-500 transition-all duration-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
               />
-              {error && (
+              {error.image && (
                 <motion.span
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -197,6 +220,7 @@ const EditMenu = ({
               {loading ? (
                 <Button
                   disabled
+                  type="button"
                   className="w-full h-12 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-semibold"
                 >
                   <Loader2 className="mr-2 w-5 h-5 animate-spin" />
@@ -208,7 +232,10 @@ const EditMenu = ({
                   whileTap={{ scale: 0.98 }}
                   className="w-full"
                 >
-                  <Button className="w-full h-12 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300">
+                  <Button
+                    type="submit"
+                    className="w-full h-12 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+                  >
                     Update Menu
                   </Button>
                 </motion.div>
