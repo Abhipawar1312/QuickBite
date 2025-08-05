@@ -72,10 +72,8 @@ const EditMenu = ({
 
   const submitHandler = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
     // Clear previous errors
     setError({});
-
     // Validate basic menu schema (excluding availability for now)
     const basicInput = {
       name: input.name,
@@ -83,14 +81,12 @@ const EditMenu = ({
       price: input.price,
       image: input.image,
     };
-
     const result = menuSchema.safeParse(basicInput);
     if (!result.success) {
       const fieldErrors = result.error.formErrors.fieldErrors;
       setError(fieldErrors as Partial<MenuFormSchema>);
       return;
     }
-
     try {
       const formData = new FormData();
       formData.append("name", input.name);
@@ -100,10 +96,8 @@ const EditMenu = ({
       if (input.image) {
         formData.append("image", input.image);
       }
-
       // Wait for the edit operation to complete
       await editMenu(selectedMenu._id, formData);
-
       // Close dialog and reset form on success
       setEditOpen(false);
       setInput({
@@ -221,7 +215,6 @@ const EditMenu = ({
                 </motion.span>
               )}
             </div>
-
             {/* Availability Toggle */}
             <div className="space-y-3">
               <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
@@ -254,7 +247,6 @@ const EditMenu = ({
                 />
               </div>
             </div>
-
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
                 <ImageIcon className="w-4 h-4" />

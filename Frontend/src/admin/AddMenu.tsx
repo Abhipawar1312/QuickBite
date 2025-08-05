@@ -68,17 +68,14 @@ const AddMenu = () => {
 
   const submitHandler = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
     // Clear previous errors
     setError({});
-
     const result = menuSchema.safeParse(input);
     if (!result.success) {
       const fieldErrors = result.error.formErrors.fieldErrors;
       setError(fieldErrors as Partial<MenuFormSchema>);
       return;
     }
-
     try {
       const formData = new FormData();
       formData.append("name", input.name);
@@ -87,10 +84,8 @@ const AddMenu = () => {
       if (input.image) {
         formData.append("image", input.image);
       }
-
       // Wait for the create operation to complete
       await createMenu(formData);
-
       // Close dialog and reset form on success
       setOpen(false);
       setInput({
@@ -144,11 +139,9 @@ const AddMenu = () => {
   useEffect(() => {
     // Clear any cached data first to ensure fresh data for new admin
     clearRestaurantData();
-
     const fetchRestaurant = async () => {
       await getRestaurant();
     };
-
     fetchRestaurant();
   }, []); // Remove restaurant dependency to avoid infinite loop
 
@@ -349,7 +342,6 @@ const AddMenu = () => {
                       className="w-full lg:w-24 lg:h-24 h-48 object-cover group-hover:scale-110 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
                     {/* Availability Badge */}
                     <div className="absolute top-2 right-2">
                       {menu.availability === "Available" ? (
@@ -395,7 +387,6 @@ const AddMenu = () => {
                         className="data-[state=checked]:bg-green-500"
                       />
                     </div>
-
                     {/* Action Buttons */}
                     <div className="flex gap-2">
                       <motion.div
@@ -415,19 +406,19 @@ const AddMenu = () => {
                           Edit
                         </Button>
                       </motion.div>
-
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <motion.div
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
+                            className="flex-1"
                           >
                             <Button
                               size="sm"
-                              variant="outline"
-                              className="border-2 border-red-200 hover:border-red-300 text-red-600 hover:text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20 px-3 py-2 rounded-xl font-semibold transition-all duration-300"
+                              className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-4 py-2 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete
                             </Button>
                           </motion.div>
                         </AlertDialogTrigger>
