@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  Timer,
-  MapPin,
-  // Star,
-  Sparkles,
-} from "lucide-react";
+import { Timer, MapPin, Sparkles } from "lucide-react";
 import { Badge } from "./ui/badge";
 import AvailableMenu from "./AvailableMenu";
 import { useRestaurantStore } from "@/store/useRestaurantStore";
@@ -212,17 +207,16 @@ const RestaurantDetail = () => {
             transform: translateY(0);
           }
         }
-
+        
         @keyframes float {
-          0%,
-          100% {
+          0%, 100% {
             transform: translateY(0px);
           }
           50% {
             transform: translateY(-10px);
           }
         }
-
+        
         .animate-float {
           animation: float 3s ease-in-out infinite;
         }

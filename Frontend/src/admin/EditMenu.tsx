@@ -13,10 +13,18 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { type MenuFormSchema, menuSchema } from "@/schema/menuSchema";
 import { useMenuStore } from "@/store/useMenuStore";
 import type { MenuItem } from "@/types/restaurantType";
-import { Loader2, Edit3, ImageIcon, IndianRupee } from "lucide-react";
+import {
+  Loader2,
+  Edit3,
+  ImageIcon,
+  IndianRupee,
+  CheckCircle,
+  XCircle,
+} from "lucide-react";
 import {
   type Dispatch,
   type FormEvent,
@@ -25,6 +33,11 @@ import {
   useState,
 } from "react";
 import { motion } from "framer-motion";
+
+// Extended form schema to include availability
+interface ExtendedMenuFormSchema extends MenuFormSchema {
+  availability: "Available" | "Out of Stock";
+}
 
 const EditMenu = ({
   selectedMenu,
@@ -35,11 +48,12 @@ const EditMenu = ({
   editOpen: boolean;
   setEditOpen: Dispatch<SetStateAction<boolean>>;
 }) => {
-  const [input, setInput] = useState<MenuFormSchema>({
+  const [input, setInput] = useState<ExtendedMenuFormSchema>({
     name: "",
     description: "",
     price: 0,
     image: undefined,
+    availability: "Available",
   });
   const [error, setError] = useState<Partial<MenuFormSchema>>({});
   const { loading, editMenu } = useMenuStore();
@@ -49,13 +63,28 @@ const EditMenu = ({
     setInput({ ...input, [name]: type === "number" ? Number(value) : value });
   };
 
+  const handleAvailabilityChange = (checked: boolean) => {
+    setInput({
+      ...input,
+      availability: checked ? "Available" : "Out of Stock",
+    });
+  };
+
   const submitHandler = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     // Clear previous errors
     setError({});
 
-    const result = menuSchema.safeParse(input);
+    // Validate basic menu schema (excluding availability for now)
+    const basicInput = {
+      name: input.name,
+      description: input.description,
+      price: input.price,
+      image: input.image,
+    };
+
+    const result = menuSchema.safeParse(basicInput);
     if (!result.success) {
       const fieldErrors = result.error.formErrors.fieldErrors;
       setError(fieldErrors as Partial<MenuFormSchema>);
@@ -67,6 +96,7 @@ const EditMenu = ({
       formData.append("name", input.name);
       formData.append("description", input.description);
       formData.append("price", input.price.toString());
+      formData.append("availability", input.availability);
       if (input.image) {
         formData.append("image", input.image);
       }
@@ -81,6 +111,7 @@ const EditMenu = ({
         description: "",
         price: 0,
         image: undefined,
+        availability: "Available",
       });
       setError({});
     } catch (error) {
@@ -96,6 +127,7 @@ const EditMenu = ({
         description: selectedMenu?.description || "",
         price: selectedMenu?.price || 0,
         image: undefined,
+        availability: selectedMenu?.availability || "Available",
       });
       // Clear errors when opening dialog
       setError({});
@@ -104,7 +136,7 @@ const EditMenu = ({
 
   return (
     <Dialog open={editOpen} onOpenChange={setEditOpen}>
-      <DialogContent className="max-w-md mx-auto bg-white dark:bg-slate-800 border-0 shadow-2xl rounded-2xl">
+      <DialogContent className="max-w-md mx-auto bg-white dark:bg-slate-800 border-0 shadow-2xl rounded-2xl max-h-[90vh] overflow-y-auto">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -189,6 +221,40 @@ const EditMenu = ({
                 </motion.span>
               )}
             </div>
+
+            {/* Availability Toggle */}
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Availability Status
+              </Label>
+              <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border-2 border-slate-200 dark:border-slate-600">
+                <div className="flex items-center gap-3">
+                  {input.availability === "Available" ? (
+                    <CheckCircle className="w-5 h-5 text-green-500" />
+                  ) : (
+                    <XCircle className="w-5 h-5 text-red-500" />
+                  )}
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                      {input.availability === "Available"
+                        ? "Available"
+                        : "Out of Stock"}
+                    </p>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">
+                      {input.availability === "Available"
+                        ? "Customers can order this item"
+                        : "This item is currently unavailable"}
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={input.availability === "Available"}
+                  onCheckedChange={handleAvailabilityChange}
+                  className="data-[state=checked]:bg-green-500"
+                />
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
                 <ImageIcon className="w-4 h-4" />

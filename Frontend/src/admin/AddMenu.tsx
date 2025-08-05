@@ -10,8 +10,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { type MenuFormSchema, menuSchema } from "@/schema/menuSchema";
 import {
   Loader2,
@@ -20,9 +32,13 @@ import {
   IndianRupee,
   ImageIcon,
   ChefHat,
+  Trash2,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 import type React from "react";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import EditMenu from "./EditMenu";
 import { useMenuStore } from "@/store/useMenuStore";
 import { useRestaurantStore } from "@/store/useRestaurantStore";
@@ -40,8 +56,10 @@ const AddMenu = () => {
   const [selectedMenu, setSelectedMenu] = useState<any>();
   const [error, setError] = useState<Partial<MenuFormSchema>>({});
 
-  const { loading, createMenu } = useMenuStore();
-  const { restaurant } = useRestaurantStore();
+  const { loading, createMenu, deleteMenu, toggleMenuAvailability } =
+    useMenuStore();
+  const { restaurant, getRestaurant, clearRestaurantData } =
+    useRestaurantStore();
 
   const changeEventHandler = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type } = e.target;
@@ -88,6 +106,27 @@ const AddMenu = () => {
     }
   };
 
+  const handleDeleteMenu = async (menuId: string) => {
+    try {
+      await deleteMenu(menuId);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const handleToggleAvailability = async (
+    menuId: string,
+    currentAvailability: string
+  ) => {
+    try {
+      const newAvailability =
+        currentAvailability === "Available" ? "Out of Stock" : "Available";
+      await toggleMenuAvailability(menuId, newAvailability);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
   // Reset form when dialog opens
   const handleDialogOpen = (isOpen: boolean) => {
     setOpen(isOpen);
@@ -101,6 +140,17 @@ const AddMenu = () => {
       setError({});
     }
   };
+
+  useEffect(() => {
+    // Clear any cached data first to ensure fresh data for new admin
+    clearRestaurantData();
+
+    const fetchRestaurant = async () => {
+      await getRestaurant();
+    };
+
+    fetchRestaurant();
+  }, []); // Remove restaurant dependency to avoid infinite loop
 
   return (
     <motion.div
@@ -287,7 +337,7 @@ const AddMenu = () => {
                 whileHover={{ y: -4 }}
                 className="bg-white dark:bg-slate-800 shadow-xl rounded-2xl p-6 border border-slate-200 dark:border-slate-700 hover:shadow-2xl transition-all duration-300 group"
               >
-                <div className="flex flex-col md:flex-row md:items-center gap-6">
+                <div className="flex flex-col lg:flex-row lg:items-center gap-6">
                   {/* Image */}
                   <motion.div
                     whileHover={{ scale: 1.05 }}
@@ -296,9 +346,24 @@ const AddMenu = () => {
                     <img
                       src={menu.image || "/placeholder.svg"}
                       alt={menu.name}
-                      className="w-full md:w-24 md:h-24 h-48 object-cover group-hover:scale-110 transition-transform duration-500"
+                      className="w-full lg:w-24 lg:h-24 h-48 object-cover group-hover:scale-110 transition-transform duration-500"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                    {/* Availability Badge */}
+                    <div className="absolute top-2 right-2">
+                      {menu.availability === "Available" ? (
+                        <div className="bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" />
+                          Available
+                        </div>
+                      ) : (
+                        <div className="bg-red-500 text-white px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
+                          <XCircle className="w-3 h-3" />
+                          Out of Stock
+                        </div>
+                      )}
+                    </div>
                   </motion.div>
 
                   {/* Content */}
@@ -315,23 +380,95 @@ const AddMenu = () => {
                     </div>
                   </div>
 
-                  {/* Edit Button */}
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <Button
-                      onClick={() => {
-                        setSelectedMenu(menu);
-                        setEditOpen(true);
-                      }}
-                      size="sm"
-                      className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
-                    >
-                      <Edit className="w-4 h-4 mr-2" />
-                      Edit
-                    </Button>
-                  </motion.div>
+                  {/* Controls */}
+                  <div className="flex flex-col gap-4 lg:min-w-[200px]">
+                    {/* Availability Toggle */}
+                    <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                        Available
+                      </span>
+                      <Switch
+                        checked={menu.availability === "Available"}
+                        onCheckedChange={() =>
+                          handleToggleAvailability(menu._id, menu.availability)
+                        }
+                        className="data-[state=checked]:bg-green-500"
+                      />
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                      <motion.div
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="flex-1"
+                      >
+                        <Button
+                          onClick={() => {
+                            setSelectedMenu(menu);
+                            setEditOpen(true);
+                          }}
+                          size="sm"
+                          className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-4 py-2 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+                        >
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit
+                        </Button>
+                      </motion.div>
+
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <motion.div
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-2 border-red-200 hover:border-red-300 text-red-600 hover:text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20 px-3 py-2 rounded-xl font-semibold transition-all duration-300"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </motion.div>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="bg-white dark:bg-slate-800 border-0 shadow-2xl rounded-2xl">
+                          <AlertDialogHeader>
+                            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                              <AlertTriangle className="w-8 h-8 text-red-600" />
+                            </div>
+                            <AlertDialogTitle className="text-center text-xl font-bold text-slate-900 dark:text-white">
+                              Delete Menu Item
+                            </AlertDialogTitle>
+                            <AlertDialogDescription className="text-center text-slate-600 dark:text-slate-400">
+                              Are you sure you want to delete "{menu.name}"?
+                              This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter className="flex gap-3 pt-6">
+                            <AlertDialogCancel className="flex-1 h-12 rounded-xl border-2 border-slate-200 hover:border-slate-300 text-slate-700 hover:text-slate-800 font-semibold">
+                              Cancel
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteMenu(menu._id)}
+                              className="flex-1 h-12 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+                            >
+                              {loading ? (
+                                <>
+                                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                                  Deleting...
+                                </>
+                              ) : (
+                                <>
+                                  <Trash2 className="mr-2 w-4 h-4" />
+                                  Delete
+                                </>
+                              )}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             ))}

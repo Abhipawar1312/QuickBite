@@ -1,12 +1,13 @@
 import mongoose, { Document } from "mongoose";
 
 export interface IMenu {
-    // _id:mongoose.Schema.Types.ObjectId;
     name: string;
     description: string;
     price: number;
     image: string;
+    availability: 'Available' | 'Out of Stock';
 }
+
 export interface IMenuDocument extends IMenu, Document {
     createdAt: Date;
     updatedAt: Date;
@@ -29,6 +30,11 @@ const menuSchema = new mongoose.Schema<IMenuDocument>({
         type: String,
         required: true
     },
+    availability: {
+        type: String,
+        enum: ['Available', 'Out of Stock'],
+        default: 'Available'
+    }
 }, { timestamps: true });
 
 export const Menu = mongoose.model("Menu", menuSchema);

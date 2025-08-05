@@ -1,7 +1,7 @@
+// Updated Restaurant component
 "use client";
 
 import type React from "react";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,7 +29,9 @@ const Restaurant = () => {
     getRestaurant,
     createRestaurant,
     updateRestaurant,
+    clearRestaurantData, // Add this
   } = useRestaurantStore();
+
   const [input, setInput] = useState<RestaurantFormSchema>({
     restaurantName: "",
     city: "",
@@ -64,10 +66,8 @@ const Restaurant = () => {
         formData.append("imageFile", input.imageFile);
       }
       if (restaurant) {
-        // update
         await updateRestaurant(formData);
       } else {
-        // create
         await createRestaurant(formData);
       }
     } catch (error) {
@@ -76,23 +76,41 @@ const Restaurant = () => {
   };
 
   useEffect(() => {
+    // Clear any cached data first to ensure fresh data for new admin
+    clearRestaurantData();
+
     const fetchRestaurant = async () => {
       await getRestaurant();
-      if (restaurant) {
-        setInput({
-          restaurantName: restaurant.restaurantName || "",
-          city: restaurant.city || "",
-          country: restaurant.country || "",
-          deliveryTime: restaurant.deliveryTime || 0,
-          cuisines: restaurant.cuisines
-            ? restaurant.cuisines.map((cuisine: string) => cuisine)
-            : [],
-          imageFile: undefined,
-        });
-      }
     };
+
     fetchRestaurant();
-  }, []);
+  }, []); // Remove restaurant dependency to avoid infinite loop
+
+  // Separate useEffect to update form when restaurant data changes
+  useEffect(() => {
+    if (restaurant) {
+      setInput({
+        restaurantName: restaurant.restaurantName || "",
+        city: restaurant.city || "",
+        country: restaurant.country || "",
+        deliveryTime: restaurant.deliveryTime || 0,
+        cuisines: restaurant.cuisines
+          ? restaurant.cuisines.map((cuisine: string) => cuisine)
+          : [],
+        imageFile: undefined,
+      });
+    } else {
+      // Reset form if no restaurant
+      setInput({
+        restaurantName: "",
+        city: "",
+        country: "",
+        deliveryTime: 0,
+        cuisines: [],
+        imageFile: undefined,
+      });
+    }
+  }, [restaurant]);
 
   const formFields = [
     {
@@ -129,6 +147,7 @@ const Restaurant = () => {
       transition={{ duration: 0.6 }}
       className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 py-8 px-4"
     >
+      {/* Rest of your component remains the same */}
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <motion.div
