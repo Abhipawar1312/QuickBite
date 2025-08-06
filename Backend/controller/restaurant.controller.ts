@@ -164,7 +164,9 @@ export const searchRestaurant = async (req: Request, res: Response): Promise<voi
             query.$or = [
                 { restaurantName: { $regex: searchText, $options: 'i' } },
                 { city: { $regex: searchText, $options: 'i' } },
-                { country: { $regex: searchText, $options: 'i' } }
+                { country: { $regex: searchText, $options: 'i' } },
+                { cuisines: { $elemMatch: { $regex: searchText, $options: "i" } } }
+
             ];
         }
 

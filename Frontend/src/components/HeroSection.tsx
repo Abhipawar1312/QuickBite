@@ -209,25 +209,29 @@ const HeroSection = () => {
             Popular searches:
           </p>
           <div className="flex flex-wrap justify-center gap-2">
-            {["Pizza", "Burger", "Sushi", "Indian", "Chinese"].map(
-              (term, index) => (
-                <motion.button
-                  key={term}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.9 + index * 0.1 }}
-                  whileHover={{ scale: 1.05, y: -2 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    setSearchText(term);
-                    navigate(`/search/${term}`);
-                  }}
-                  className="px-3 sm:px-4 py-1.5 sm:py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-full text-xs sm:text-sm font-medium hover:bg-orange-100 dark:hover:bg-orange-900/30 hover:text-orange-600 dark:hover:text-orange-400 transition-all duration-300 border border-slate-200 dark:border-slate-700 hover:border-orange-300 dark:hover:border-orange-600"
-                >
-                  {term}
-                </motion.button>
-              )
-            )}
+            {[
+              "Chole Bhature",
+              "Butter Chicken",
+              "Chole Kulche",
+              "Momos",
+              "Tandoori Chicken",
+            ].map((term, index) => (
+              <motion.button
+                key={term}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.9 + index * 0.1 }}
+                whileHover={{ scale: 1.05, y: -2 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  setSearchText(term);
+                  navigate(`/search/${term}`);
+                }}
+                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-full text-xs sm:text-sm font-medium hover:bg-orange-100 dark:hover:bg-orange-900/30 hover:text-orange-600 dark:hover:text-orange-400 transition-all duration-300 border border-slate-200 dark:border-slate-700 hover:border-orange-300 dark:hover:border-orange-600"
+              >
+                {term}
+              </motion.button>
+            ))}
           </div>
         </motion.div>
       </motion.div>
