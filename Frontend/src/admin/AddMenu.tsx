@@ -267,6 +267,7 @@ const AddMenu = () => {
                   </Label>
                   <Input
                     type="file"
+                    data-testid="menu-image-input"
                     name="image"
                     accept="image/*"
                     onChange={(e) =>

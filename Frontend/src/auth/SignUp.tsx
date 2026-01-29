@@ -188,18 +188,23 @@ const SignUp = () => {
                       value={input[field.name as keyof SignupInputState]}
                       onChange={onChangeHandler}
                       placeholder={field.placeholder}
-                      className={`${
-                        isPassword ? "pl-12 pr-12" : "pl-12 pr-4"
-                      } py-3 h-12 bg-white dark:bg-slate-900 border-2 rounded-xl focus:border-orange-500 focus:ring-2 focus:ring-orange-200 dark:focus:ring-orange-800 transition-all duration-300 text-slate-900 dark:text-white placeholder:text-slate-500 ${
-                        errors?.[field.name as keyof SignupInputState]
+                      className={`${isPassword ? "pl-12 pr-12" : "pl-12 pr-4"
+                        } py-3 h-12 bg-white dark:bg-slate-900 border-2 rounded-xl focus:border-orange-500 focus:ring-2 focus:ring-orange-200 dark:focus:ring-orange-800 transition-all duration-300 text-slate-900 dark:text-white placeholder:text-slate-500 ${errors?.[field.name as keyof SignupInputState]
                           ? "border-red-500 focus:border-red-500 focus:ring-red-200"
                           : "border-slate-200 dark:border-slate-700"
-                      }`}
+                        }`}
+                    />
+                    <motion.div
+                      className="absolute inset-0 rounded-xl bg-gradient-to-r from-orange-500/10 to-orange-600/10 opacity-0 group-focus-within:opacity-100 transition-opacity duration-300 pointer-events-none"
+                      layoutId={`inputGlow${index}`}
+                      aria-hidden
                     />
                     {isPassword && (
                       <button
                         type="button"
-                        onClick={() => setShowPassword(!showPassword)}
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        aria-label="Toggle Password Visibility"
+                        data-testid="toggle-password-visibility"
                         className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors duration-300 z-10"
                         tabIndex={-1}
                       >
@@ -210,10 +215,6 @@ const SignUp = () => {
                         )}
                       </button>
                     )}
-                    <motion.div
-                      className="absolute inset-0 rounded-xl bg-gradient-to-r from-orange-500/10 to-orange-600/10 opacity-0 group-focus-within:opacity-100 transition-opacity duration-300 pointer-events-none"
-                      layoutId={`inputGlow${index}`}
-                    />
                   </div>
                   {errors?.[field.name as keyof SignupInputState] && (
                     <motion.p

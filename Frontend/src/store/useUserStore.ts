@@ -5,8 +5,8 @@ import { LoginInputState, SignupInputState } from "@/schema/userSchema";
 import { toast } from "sonner";
 import { useThemeStore } from "./useThemeStore";
 
-// const API_END_POINT = "http://localhost:8000/api/v1/user";
-const API_END_POINT = "https://quickbite-ogw0.onrender.com/api/v1/user"
+const API_END_POINT = "http://localhost:8000/api/v1/user";
+// const API_END_POINT = "https://quickbite-ogw0.onrender.com/api/v1/user"
 axios.defaults.withCredentials = true;
 
 type User = {

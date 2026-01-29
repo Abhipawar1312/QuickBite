@@ -176,7 +176,7 @@ const Restaurant = () => {
           transition={{ delay: 0.3 }}
           className="bg-white dark:bg-slate-800 shadow-2xl rounded-3xl p-8 border border-slate-200 dark:border-slate-700"
         >
-          <form onSubmit={submitHandler} className="space-y-8">
+          <form data-testid="restaurant-form" onSubmit={submitHandler} className="space-y-8">
             {/* Basic Info Grid */}
             <div className="grid md:grid-cols-2 gap-6">
               {formFields.map((field, index) => {
@@ -198,8 +198,8 @@ const Restaurant = () => {
                       name={field.name}
                       value={
                         input[field.name as keyof RestaurantFormSchema] as
-                          | string
-                          | number
+                        | string
+                        | number
                       }
                       onChange={changeEventHandler}
                       placeholder={field.placeholder}
@@ -214,7 +214,7 @@ const Restaurant = () => {
                         >
                           {
                             errors[
-                              field.name as keyof RestaurantFormSchema
+                            field.name as keyof RestaurantFormSchema
                             ] as string
                           }
                         </motion.span>
@@ -313,7 +313,7 @@ const Restaurant = () => {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <Button className="w-full sm:w-auto h-12 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-8 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300">
+                  <Button type="submit" className="w-full sm:w-auto h-12 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-8 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300">
                     {restaurant ? "Update Restaurant" : "Add Restaurant"}
                   </Button>
                 </motion.div>

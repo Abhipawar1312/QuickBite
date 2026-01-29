@@ -3,8 +3,8 @@ import axios from "axios";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-// const API_END_POINT: string = "http://localhost:8000/api/v1/order";
-const API_END_POINT: string = "https://quickbite-ogw0.onrender.com/api/v1/order";
+const API_END_POINT: string = "http://localhost:8000/api/v1/order";
+// const API_END_POINT: string = "https://quickbite-ogw0.onrender.com/api/v1/order";
 axios.defaults.withCredentials = true;
 
 export const useOrderStore = create<OrderState>()(persist((set => ({

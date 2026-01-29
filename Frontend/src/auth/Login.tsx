@@ -23,7 +23,7 @@ const Login = () => {
 
   const changeEventHandler = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setInput({ ...input, [name]: value });
+    setInput((prev) => ({ ...prev, [name]: value }));
     const singleFieldSchema =
       userLoginSchema.shape[name as keyof LoginInputState];
     if (singleFieldSchema) {
@@ -143,11 +143,10 @@ const Login = () => {
                   name="email"
                   value={input.email}
                   onChange={changeEventHandler}
-                  className={`pl-12 pr-4 py-3 h-12 bg-white dark:bg-slate-900 border-2 rounded-xl focus:border-orange-500 focus:ring-2 focus:ring-orange-200 dark:focus:ring-orange-800 transition-all duration-300 text-slate-900 dark:text-white placeholder:text-slate-500 ${
-                    errors?.email
-                      ? "border-red-500 focus:border-red-500 focus:ring-red-200"
-                      : "border-slate-200 dark:border-slate-700"
-                  }`}
+                  className={`pl-12 pr-4 py-3 h-12 bg-white dark:bg-slate-900 border-2 rounded-xl focus:border-orange-500 focus:ring-2 focus:ring-orange-200 dark:focus:ring-orange-800 transition-all duration-300 text-slate-900 dark:text-white placeholder:text-slate-500 ${errors?.email
+                    ? "border-red-500 focus:border-red-500 focus:ring-red-200"
+                    : "border-slate-200 dark:border-slate-700"
+                    }`}
                 />
                 <motion.div
                   className="absolute inset-0 rounded-xl bg-gradient-to-r from-orange-500/10 to-orange-600/10 opacity-0 group-focus-within:opacity-100 transition-opacity duration-300 pointer-events-none"
@@ -182,11 +181,10 @@ const Login = () => {
                   name="password"
                   value={input.password}
                   onChange={changeEventHandler}
-                  className={`pl-12 pr-12 py-3 h-12 bg-white dark:bg-slate-900 border-2 rounded-xl focus:border-orange-500 focus:ring-2 focus:ring-orange-200 dark:focus:ring-orange-800 transition-all duration-300 text-slate-900 dark:text-white placeholder:text-slate-500 ${
-                    errors?.password
-                      ? "border-red-500 focus:border-red-500 focus:ring-red-200"
-                      : "border-slate-200 dark:border-slate-700"
-                  }`}
+                  className={`pl-12 pr-12 py-3 h-12 bg-white dark:bg-slate-900 border-2 rounded-xl focus:border-orange-500 focus:ring-2 focus:ring-orange-200 dark:focus:ring-orange-800 transition-all duration-300 text-slate-900 dark:text-white placeholder:text-slate-500 ${errors?.password
+                    ? "border-red-500 focus:border-red-500 focus:ring-red-200"
+                    : "border-slate-200 dark:border-slate-700"
+                    }`}
                 />
                 <button
                   type="button"
