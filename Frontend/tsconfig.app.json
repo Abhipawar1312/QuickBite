@@ -1,24 +1,17 @@
 {
   "compilerOptions": {
     "target": "ESNext",
-    "useDefineForClassFields": true,
     "lib": [
       "DOM",
       "DOM.Iterable",
       "ESNext"
     ],
-    "allowJs": false,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
-    "module": "ESNext",
-    "moduleResolution": "Node",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
     "jsx": "react-jsx",
+    "moduleResolution": "Bundler",
+    "types": [
+      "jest",
+      "node"
+    ],
     "baseUrl": ".",
     "paths": {
       "@/*": [
@@ -28,11 +21,5 @@
   },
   "include": [
     "src"
-  ],
-  "exclude": [
-    "**/*.test.ts",
-    "**/*.test.tsx",
-    "**/__tests__/**",
-    "node_modules"
   ]
 }
