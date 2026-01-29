@@ -1,4 +1,3 @@
-// src/components/__tests__/Cart.test.tsx
 import { render, screen, fireEvent } from "@testing-library/react";
 import Cart from "../Cart";
 import { useCartStore } from "@/store/useCartStore";

@@ -1,4 +1,3 @@
-// src/admin/__tests__/Restaurant.test.tsx
 import { render, screen, fireEvent, act } from "@testing-library/react";
 import Restaurant from "../Restaurant";
 import { useRestaurantStore } from "@/store/useRestaurantStore";
