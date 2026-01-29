@@ -2,9 +2,9 @@ name: Run Tests
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ main ]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: [ main ]
 
 jobs:
   test:
@@ -19,8 +19,10 @@ jobs:
         with:
           node-version: 18
 
-      - name: Install dependencies
+      - name: Install dependencies (Frontend)
         run: npm install
+        working-directory: Frontend
 
-      - name: Run tests
+      - name: Run tests (Frontend)
         run: npm test
+        working-directory: Frontend
