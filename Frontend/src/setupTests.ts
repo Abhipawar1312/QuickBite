@@ -1,9 +1,27 @@
-import "@testing-library/jest-dom";
+import '@testing-library/jest-dom';
 
-import { TextEncoder, TextDecoder } from 'util';
+/* =======================
+   Polyfills for JSDOM
+======================= */
 
-global.TextEncoder = TextEncoder as any;
-global.TextDecoder = TextDecoder as any;
+// import { TextEncoder, TextDecoder } from 'util';
+
+// Explicitly type globalThis (works in Node + TS)
+(globalThis as any).TextEncoder = TextEncoder;
+(globalThis as any).TextDecoder = TextDecoder;
+
+/* =======================
+   ResizeObserver mock
+======================= */
+
+class ResizeObserverMock {
+   observe() { }
+   unobserve() { }
+   disconnect() { }
+}
+
+(globalThis as any).ResizeObserver = ResizeObserverMock;
+
 
 /* ============================
    MOCK REACT ROUTER
@@ -56,13 +74,7 @@ jest.mock('./store/useUserStore', () => ({
    RADIX UI FIXES (CRITICAL)
 ============================ */
 
-// ResizeObserver (Radix requirement)
-class ResizeObserverMock {
-   observe() { }
-   unobserve() { }
-   disconnect() { }
-}
-(global as any).ResizeObserver = ResizeObserverMock;
+
 
 // 🔥 FIX hasPointerCapture CRASH
 HTMLElement.prototype.hasPointerCapture = () => false;
