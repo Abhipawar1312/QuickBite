@@ -10,13 +10,5 @@
     {
       "path": "./tsconfig.jest.json"
     }
-  ],
-  "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@/*": [
-        "./src/*"
-      ]
-    }
-  }
+  ]
 }

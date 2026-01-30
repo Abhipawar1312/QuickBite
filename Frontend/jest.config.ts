@@ -8,22 +8,20 @@ const config: Config = {
         '^.+\\.(ts|tsx)$': [
             'ts-jest',
             {
-                tsconfig: 'tsconfig.jest.json',
+                tsconfig: '<rootDir>/tsconfig.jest.json',
             },
         ],
     },
 
     moduleNameMapper: {
+        '^@/(.*)$': '<rootDir>/src/$1',
         '\\.(css|scss|sass)$': '<rootDir>/src/__mocks__/styleMock.ts',
         '\\.(jpg|jpeg|png|svg)$': '<rootDir>/src/__mocks__/fileMock.ts',
-        '^@/(.*)$': '<rootDir>/src/$1',
     },
 
     setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
 
-    /* ================== COVERAGE CONFIG ================== */
     collectCoverage: true,
-
     collectCoverageFrom: [
         'src/**/*.{ts,tsx}',
         '!src/main.tsx',
@@ -32,9 +30,7 @@ const config: Config = {
     ],
 
     coverageDirectory: 'coverage',
-
     coverageReporters: ['text', 'lcov'],
-    /* ===================================================== */
 };
 
 export default config;

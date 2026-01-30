@@ -2,9 +2,7 @@
   "extends": "./tsconfig.app.json",
   "compilerOptions": {
     "module": "CommonJS",
-    "jsx": "react-jsx",
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
+    "moduleResolution": "Node",
     "types": [
       "jest",
       "@testing-library/jest-dom",
