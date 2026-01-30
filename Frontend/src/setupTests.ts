@@ -1,14 +1,25 @@
 import '@testing-library/jest-dom';
 
 /* =======================
-   Polyfills for JSDOM
+   JSDOM Polyfills
 ======================= */
 
-// import { TextEncoder, TextDecoder } from 'util';
+// Node 18+ / Jest already provides these
+if (typeof globalThis.TextEncoder === 'undefined') {
+   globalThis.TextEncoder = class TextEncoder {
+      encode(input?: string) {
+         return new Uint8Array(Buffer.from(input || ''));
+      }
+   } as any;
+}
 
-// Explicitly type globalThis (works in Node + TS)
-(globalThis as any).TextEncoder = TextEncoder;
-(globalThis as any).TextDecoder = TextDecoder;
+if (typeof globalThis.TextDecoder === 'undefined') {
+   globalThis.TextDecoder = class TextDecoder {
+      decode(input?: Uint8Array) {
+         return Buffer.from(input || []).toString();
+      }
+   } as any;
+}
 
 /* =======================
    ResizeObserver mock
@@ -22,10 +33,10 @@ class ResizeObserverMock {
 
 (globalThis as any).ResizeObserver = ResizeObserverMock;
 
-
 /* ============================
    MOCK REACT ROUTER
 ============================ */
+
 jest.mock('react-router-dom', () => ({
    ...jest.requireActual('react-router-dom'),
    useNavigate: () => jest.fn(),
@@ -35,6 +46,7 @@ jest.mock('react-router-dom', () => ({
 /* ============================
    MOCK TOAST
 ============================ */
+
 jest.mock('sonner', () => ({
    toast: {
       success: jest.fn(),
@@ -43,8 +55,9 @@ jest.mock('sonner', () => ({
 }));
 
 /* ============================
-   MOCK ZUSTAND STORES (DECL ONLY)
+   MOCK ZUSTAND STORES
 ============================ */
+
 jest.mock('./store/useMenuStore', () => ({
    __esModule: true,
    useMenuStore: jest.fn(),
@@ -71,17 +84,17 @@ jest.mock('./store/useUserStore', () => ({
 }));
 
 /* ============================
-   RADIX UI FIXES (CRITICAL)
+   RADIX UI POINTER FIX
 ============================ */
 
-
-
-// 🔥 FIX hasPointerCapture CRASH
 HTMLElement.prototype.hasPointerCapture = () => false;
 HTMLElement.prototype.setPointerCapture = () => { };
 HTMLElement.prototype.releasePointerCapture = () => { };
 
-// Prevent mock leakage
+/* ============================
+   CLEANUP
+============================ */
+
 afterEach(() => {
    jest.clearAllMocks();
 });
