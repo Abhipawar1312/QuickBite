@@ -20,7 +20,7 @@ const selectedMenu = {
 const setup = () => {
     const setEditOpen = jest.fn();
 
-    (useMenuStore as jest.Mock).mockReturnValue({
+    (useMenuStore as unknown as jest.Mock).mockReturnValue({
         loading: false,
         editMenu: mockEditMenu,
     });

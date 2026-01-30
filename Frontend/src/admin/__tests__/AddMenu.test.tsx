@@ -26,7 +26,7 @@ describe("AddMenu Component", () => {
         jest.clearAllMocks();
 
         // ✅ Now this works
-        (useMenuStore as jest.Mock).mockReturnValue({
+        (useMenuStore as unknown as jest.Mock).mockReturnValue({
             loading: false,
             createMenu: mockCreateMenu,
             deleteMenu: mockDeleteMenu,
@@ -34,7 +34,7 @@ describe("AddMenu Component", () => {
             clearMenuData: jest.fn(),
         });
 
-        (useRestaurantStore as jest.Mock).mockReturnValue({
+        (useRestaurantStore as unknown as jest.Mock).mockReturnValue({
             restaurant: { menus: [] },
             getRestaurant: mockGetRestaurant,
             clearRestaurantData: mockClearRestaurantData,

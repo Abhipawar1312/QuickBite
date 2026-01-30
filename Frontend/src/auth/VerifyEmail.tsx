@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/input-otp";
 import { REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
 import { motion } from "framer-motion";
-import Icon from "../assets/Icon.png";
+import Icon from "@/assets/Icon.png";
 
 const VerifyEmail = () => {
   const [otp, setOtp] = useState("");

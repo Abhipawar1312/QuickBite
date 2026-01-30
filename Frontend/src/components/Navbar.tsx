@@ -39,7 +39,7 @@ import { Separator } from "./ui/separator";
 import { useUserStore } from "@/store/useUserStore";
 import { useCartStore } from "@/store/useCartStore";
 import DarkMode from "./Darkmode";
-import Icon from "../assets/Icon.png";
+import Icon from "@/assets/Icon.png";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "./ui/badge";
 
@@ -256,10 +256,10 @@ const Navbar = () => {
                   <AvatarFallback className="bg-gradient-to-br from-orange-100 to-orange-200 dark:from-orange-900/30 dark:to-orange-800/30 text-orange-600 dark:text-orange-400 font-bold text-sm">
                     {user?.fullname
                       ? user.fullname
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")
-                          .toUpperCase()
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .toUpperCase()
                       : "U"}
                   </AvatarFallback>
                 </Avatar>
@@ -450,10 +450,10 @@ const MobileNavbar = () => {
               <AvatarFallback className="bg-gradient-to-br from-orange-100 to-orange-200 dark:from-orange-900/30 dark:to-orange-800/30 text-orange-600 dark:text-orange-400 font-bold">
                 {user?.fullname
                   ? user.fullname
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .toUpperCase()
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .toUpperCase()
                   : "U"}
               </AvatarFallback>
             </Avatar>

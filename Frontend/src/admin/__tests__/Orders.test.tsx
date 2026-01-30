@@ -12,7 +12,7 @@ jest.mock("@/store/useRestaurantStore", () => ({
 
 describe("Orders Component", () => {
     beforeEach(() => {
-        (useRestaurantStore as jest.Mock).mockReturnValue({
+        (useRestaurantStore as unknown as jest.Mock).mockReturnValue({
             restaurantOrder: [
                 {
                     _id: "1234567890abcdef",
@@ -45,7 +45,7 @@ describe("Orders Component", () => {
     });
 
     it("shows empty state when no orders exist", async () => {
-        (useRestaurantStore as jest.Mock).mockReturnValueOnce({
+        (useRestaurantStore as unknown as jest.Mock).mockReturnValueOnce({
             restaurantOrder: [],
             getRestaurantOrders: mockGetOrders,
             updateRestaurantOrder: mockUpdateOrder,

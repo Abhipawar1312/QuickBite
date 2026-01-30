@@ -25,7 +25,7 @@ jest.mock("react-router-dom", () => ({
 
 describe("VerifyEmail Component", () => {
     beforeEach(() => {
-        (useUserStore as jest.Mock).mockReturnValue({
+        (useUserStore as unknown as jest.Mock).mockReturnValue({
             loading: false,
             verifyEmail: mockVerifyEmail,
         });
@@ -96,7 +96,7 @@ describe("VerifyEmail Component", () => {
     });
 
     test("shows loading state when loading is true", () => {
-        (useUserStore as jest.Mock).mockReturnValue({
+        (useUserStore as unknown as jest.Mock).mockReturnValue({
             loading: true,
             verifyEmail: mockVerifyEmail,
         });

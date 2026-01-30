@@ -26,7 +26,7 @@ jest.mock("react-router-dom", () => ({
 
 describe("ResetPassword Component", () => {
     beforeEach(() => {
-        (useUserStore as jest.Mock).mockReturnValue({
+        (useUserStore as unknown as jest.Mock).mockReturnValue({
             loading: false,
             resetPassword: mockResetPassword,
         });
@@ -95,7 +95,7 @@ describe("ResetPassword Component", () => {
     });
 
     test("shows loading button when loading is true", () => {
-        (useUserStore as jest.Mock).mockReturnValue({
+        (useUserStore as unknown as jest.Mock).mockReturnValue({
             loading: true,
             resetPassword: mockResetPassword,
         });

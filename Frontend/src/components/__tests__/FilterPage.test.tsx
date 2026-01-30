@@ -7,7 +7,7 @@ jest.mock("@/store/useRestaurantStore");
 const mockSetAppliedFilter = jest.fn();
 const mockResetAppliedFilter = jest.fn();
 
-(useRestaurantStore as jest.Mock).mockReturnValue({
+(useRestaurantStore as unknown as jest.Mock).mockReturnValue({
     appliedFilter: [],
     setAppliedFilter: mockSetAppliedFilter,
     resetAppliedFilter: mockResetAppliedFilter,

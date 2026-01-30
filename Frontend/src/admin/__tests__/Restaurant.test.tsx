@@ -17,7 +17,7 @@ describe("Restaurant Component", () => {
     beforeEach(() => {
         jest.clearAllMocks();
 
-        (useRestaurantStore as jest.Mock).mockReturnValue({
+        (useRestaurantStore as unknown as jest.Mock).mockReturnValue({
             loading: false,
             restaurant: null,
             getRestaurant: mockGetRestaurant,

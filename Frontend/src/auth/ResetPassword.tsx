@@ -9,7 +9,7 @@ import { Loader2, LockKeyhole, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import Icon from "../assets/Icon.png";
+import Icon from "@/assets/Icon.png";
 
 const ResetPassword = () => {
   const [newPassword, setNewPassword] = useState<string>("");

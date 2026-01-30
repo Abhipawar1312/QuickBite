@@ -2,15 +2,17 @@
   "extends": "./tsconfig.app.json",
   "compilerOptions": {
     "module": "CommonJS",
+    "moduleResolution": "Node",
     "types": [
       "jest",
       "@testing-library/jest-dom",
       "node"
-    ]
-  },
-  "include": [
-    "src/**/*.test.ts",
-    "src/**/*.test.tsx",
-    "src/setupTests.ts"
-  ]
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "src/*"
+      ]
+    }
+  }
 }

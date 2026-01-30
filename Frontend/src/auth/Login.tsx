@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { type LoginInputState, userLoginSchema } from "@/schema/userSchema";
 import { useUserStore } from "@/store/useUserStore";
 import { motion } from "framer-motion";
-import Icon from "../assets/Icon.png";
+import Icon from "@/assets/Icon.png";
 
 const Login = () => {
   const [input, setInput] = useState<LoginInputState>({

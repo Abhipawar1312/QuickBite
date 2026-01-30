@@ -17,7 +17,7 @@ const mockRemove = jest.fn();
 const mockClear = jest.fn();
 const mockGetRestaurant = jest.fn();
 
-(useCartStore as jest.Mock).mockReturnValue({
+(useCartStore as unknown as jest.Mock).mockReturnValue({
     cart: [
         {
             _id: "1",
@@ -33,18 +33,18 @@ const mockGetRestaurant = jest.fn();
     clearCart: mockClear,
 });
 
-(useRestaurantStore as jest.Mock).mockReturnValue({
+(useRestaurantStore as unknown as jest.Mock).mockReturnValue({
     restaurant: { id: "r1", name: "Test Restaurant" },
     getRestaurant: mockGetRestaurant,
 });
 
-(useOrderStore as jest.Mock).mockReturnValue({
+(useOrderStore as unknown as jest.Mock).mockReturnValue({
     createCheckoutSession: jest.fn(),
     loading: false,
 });
 
 // <-- NEW: mock user store
-(useUserStore as jest.Mock).mockReturnValue({
+(useUserStore as unknown as jest.Mock).mockReturnValue({
     user: {
         fullname: "Test User",
         email: "testuser@example.com",

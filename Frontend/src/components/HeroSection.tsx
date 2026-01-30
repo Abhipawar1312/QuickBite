@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Input } from "./ui/input";
 import { Search, Sparkles, MapPin } from "lucide-react";
 import { Button } from "./ui/button";
-import HeroImage from "../assets/foodImage.png";
+import HeroImage from "@/assets/foodImage.png";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 

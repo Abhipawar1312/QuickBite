@@ -9,7 +9,7 @@ import { Loader2, Mail, ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import Icon from "../assets/Icon.png";
+import Icon from "@/assets/Icon.png";
 
 const ForgetPassword = () => {
   const [email, setEmail] = useState<string>("");
