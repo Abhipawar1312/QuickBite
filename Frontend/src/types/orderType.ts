@@ -1,3 +1,5 @@
+import { Restaurant } from "./restaurantType";
+
 export type CheckoutSessionRequest = {
     cartItems: {
         menuId: string;
@@ -29,6 +31,7 @@ export interface Orders extends CheckoutSessionRequest {
     cancellationReason?: string;
     rider?: any;
     riderStatus?: string;
+    restaurant?: Restaurant;
 }
 export type OrderState = {
     loading: boolean;
