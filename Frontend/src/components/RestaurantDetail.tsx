@@ -1,21 +1,54 @@
 "use client";
 
-import { Timer, MapPin, Sparkles } from "lucide-react";
+import { Timer, MapPin, Sparkles, Star } from "lucide-react";
 import { Badge } from "./ui/badge";
 import AvailableMenu from "./AvailableMenu";
 import { useRestaurantStore } from "@/store/useRestaurantStore";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { io } from "socket.io-client";
+import { useReviewStore } from "@/store/useReviewStore";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { motion, AnimatePresence } from "framer-motion";
 
 const RestaurantDetail = () => {
   const params = useParams();
-  const { singleRestaurant, getSingleRestaurant } = useRestaurantStore();
+  const { singleRestaurant, getSingleRestaurant, updateSingleRestaurantMenu, updateSingleRestaurantRatings } = useRestaurantStore();
+  const { reviews, getRestaurantReviews, addLocalReview } = useReviewStore();
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     getSingleRestaurant(params.id!);
+    getRestaurantReviews(params.id!);
     setTimeout(() => setIsLoaded(true), 100);
   }, [params.id]);
+
+  useEffect(() => {
+    if (!params.id) return;
+
+    const socket = io("http://localhost:8000");
+
+    socket.on("restaurant_menu_changed", (data: any) => {
+      console.log("Restaurant menu changed in real-time via socket:", data);
+      if (data.restaurantId === params.id) {
+        updateSingleRestaurantMenu(data);
+      }
+    });
+
+    socket.on("new_review", (data: any) => {
+      console.log("New review received in real-time via socket:", data);
+      if (data.review.restaurant === params.id) {
+        addLocalReview(data.review);
+        if (data.restaurant) {
+          updateSingleRestaurantRatings(data.restaurant.averageRating, data.restaurant.numReviews);
+        }
+      }
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [params.id, updateSingleRestaurantMenu, addLocalReview, updateSingleRestaurantRatings]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
@@ -72,15 +105,17 @@ const RestaurantDetail = () => {
                       : "-translate-x-10 opacity-0"
                   }`}
                 >
-                  {/* <div className="flex items-center gap-1 hover:scale-110 transition-transform duration-300">
-                    <Star
-                      className="w-4 h-4 sm:w-5 sm:h-5 fill-yellow-400 text-yellow-400 animate-spin"
-                      style={{ animationDuration: "3s" }}
-                    />
-                    <span className="font-medium text-sm sm:text-base">
-                      4.5
-                    </span>
-                  </div> */}
+                  {singleRestaurant && (
+                    <div className="flex items-center gap-1.5 hover:scale-105 transition-transform duration-300 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-full text-white text-sm font-semibold">
+                      <Star
+                        className="w-4 h-4 sm:w-5 sm:h-5 fill-yellow-400 text-yellow-400 animate-pulse"
+                      />
+                      <span>{singleRestaurant.averageRating || "0.0"}</span>
+                      <span className="text-xs text-orange-200">
+                        ({singleRestaurant.numReviews || 0} reviews)
+                      </span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 hover:scale-110 transition-transform duration-300">
                     <MapPin className="w-3 h-3 sm:w-4 sm:h-4 animate-bounce" />
                     <span className="text-sm sm:text-base">
@@ -187,11 +222,123 @@ const RestaurantDetail = () => {
 
         {/* Mobile-Optimized Available Menu Section */}
         <div
-          className={`transition-all duration-1000 delay-1300 ${
+          className={`transition-all duration-1000 delay-1300 mb-10 ${
             isLoaded ? "opacity-100" : "opacity-0"
           }`}
         >
           <AvailableMenu menus={singleRestaurant?.menus} />
+        </div>
+
+        {/* Customer Reviews Section */}
+        <div
+          className={`bg-white dark:bg-slate-800 rounded-xl sm:rounded-2xl shadow-xl p-6 md:p-8 border border-slate-200 dark:border-slate-700 transition-all duration-1000 delay-1000 hover:shadow-2xl ${
+            isLoaded ? "translate-y-0 opacity-100" : "translate-y-20 opacity-0"
+          }`}
+        >
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 border-b border-slate-200 dark:border-slate-700 pb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+                Customer Reviews & Ratings
+              </h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                What other food lovers think of our dishes and service
+              </p>
+            </div>
+            {singleRestaurant && (
+              <div className="flex items-center gap-4 bg-orange-50 dark:bg-orange-950/20 px-6 py-4 rounded-2xl border border-orange-100 dark:border-orange-900/50">
+                <div className="text-center">
+                  <span className="text-4xl font-extrabold text-orange-600 dark:text-orange-400 block">
+                    {singleRestaurant.averageRating || "0.0"}
+                  </span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    out of 5
+                  </span>
+                </div>
+                <div className="h-12 w-[2px] bg-slate-200 dark:bg-slate-700" />
+                <div>
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <Star
+                        key={s}
+                        className={`w-4 h-4 ${
+                          s <= Math.round(singleRestaurant.averageRating || 0)
+                            ? "fill-yellow-400 text-yellow-400"
+                            : "fill-slate-200 text-slate-200 dark:fill-slate-700 dark:text-slate-700"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 mt-1 block">
+                    Based on {singleRestaurant.numReviews || 0} reviews
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {reviews.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-slate-100 dark:bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Star className="w-8 h-8 text-slate-400" />
+              </div>
+              <p className="text-slate-600 dark:text-slate-400 font-medium">
+                No reviews yet. Be the first to order and review!
+              </p>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 gap-6 max-h-[500px] overflow-y-auto pr-2">
+              <AnimatePresence initial={false}>
+                {reviews.map((review, idx) => (
+                  <motion.div
+                    key={review._id || idx}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.3 }}
+                    className="p-5 bg-slate-50 dark:bg-slate-700/30 rounded-2xl border border-slate-200/50 dark:border-slate-700/50 hover:bg-slate-100/50 dark:hover:bg-slate-700/50 transition-all duration-300"
+                  >
+                    <div className="flex items-start gap-4 mb-3">
+                      <Avatar className="w-10 h-10 border-2 border-orange-500 shadow-md">
+                        <AvatarImage src={review.user?.profilePicture} alt={review.user?.fullname} />
+                        <AvatarFallback className="bg-orange-500 text-white font-bold">
+                          {review.user?.fullname?.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <h4 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base">
+                            {review.user?.fullname}
+                          </h4>
+                          <span className="text-xs text-slate-500 dark:text-slate-400">
+                            {new Date(review.createdAt).toLocaleDateString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric"
+                            })}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 mt-1">
+                          {[1, 2, 3, 4, 5].map((s) => (
+                            <Star
+                              key={s}
+                              className={`w-3.5 h-3.5 ${
+                                s <= review.rating
+                                  ? "fill-yellow-400 text-yellow-400"
+                                  : "fill-slate-200 text-slate-200 dark:fill-slate-700 dark:text-slate-700"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed pl-14">
+                      "{review.comment}"
+                    </p>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
         </div>
       </div>
 

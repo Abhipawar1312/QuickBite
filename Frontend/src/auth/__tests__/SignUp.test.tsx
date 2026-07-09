@@ -95,6 +95,7 @@ describe("SignUp Component", () => {
             email: "abhi@test.com",
             password: "123456",
             contact: "9876543210",
+            role: "user",
         });
     });
 

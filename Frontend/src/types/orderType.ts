@@ -12,7 +12,10 @@ export type CheckoutSessionRequest = {
         contact: string;
         address: string;
         city: string;
-        country: string
+        country: string;
+        pincode?: string;
+        longitude?: number;
+        latitude?: number;
     },
     restaurantId: string;
 }
@@ -20,10 +23,19 @@ export interface Orders extends CheckoutSessionRequest {
     _id: string;
     status: string;
     totalAmount: number;
+    deliveryFee: number;
+    platformFee: number;
+    distanceKM: number;
+    cancellationReason?: string;
+    rider?: any;
+    riderStatus?: string;
 }
 export type OrderState = {
     loading: boolean;
     orders: Orders[];
     createCheckoutSession: (checkoutSessionRequest: CheckoutSessionRequest) => Promise<void>;
-    getOrderDetails: () => Promise<void>;
+    getOrderDetails: (confirmSuccess?: boolean) => Promise<void>;
+    cancelOrder: (orderId: string, cancellationReason: string) => Promise<void>;
+    updateLocalOrderStatus: (updatedOrder: any) => void;
+    markOrderAsReviewed: (orderId: string) => void;
 }

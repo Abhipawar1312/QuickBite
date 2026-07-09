@@ -4,16 +4,18 @@ import Profile from "../Profile";
 // ---------- MOCK STORE ----------
 const mockUpdateProfile = jest.fn();
 
+const mockUser = {
+    fullname: "Abhi Pawar",
+    email: "abhi@test.com",
+    address: "Mumbai",
+    city: "Mumbai",
+    country: "India",
+    profilePicture: "",
+};
+
 jest.mock("@/store/useUserStore", () => ({
     useUserStore: jest.fn(() => ({
-        user: {
-            fullname: "Abhi Pawar",
-            email: "abhi@test.com",
-            address: "Mumbai",
-            city: "Mumbai",
-            country: "India",
-            profilePicture: "",
-        },
+        user: mockUser,
         updateProfile: mockUpdateProfile,
     })),
 }));

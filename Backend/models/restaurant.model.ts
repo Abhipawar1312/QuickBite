@@ -5,10 +5,20 @@ export interface IRestaurant {
     restaurantName: string;
     city: string;
     country: string;
+    address: string;
     deliveryTime: number;
     cuisines: string[];
     imageUrl: string;
     menus: mongoose.Types.ObjectId[];
+    contactNumber: string;
+    isOpen: boolean;
+    isVerified: boolean;
+    averageRating?: number;
+    numReviews?: number;
+    location?: {
+        type: "Point";
+        coordinates: [number, number];
+    };
 }
 export interface IRestaurantDocument extends IRestaurant, Document {
     createdAt: Date;
@@ -33,6 +43,11 @@ const restaurantSchema = new mongoose.Schema<IRestaurantDocument>({
         type: String,
         required: true
     },
+    address: {
+        type: String,
+        required: true,
+        default: "N/A"
+    },
     deliveryTime: {
         type: Number,
         required: true
@@ -42,6 +57,39 @@ const restaurantSchema = new mongoose.Schema<IRestaurantDocument>({
     imageUrl: {
         type: String,
         required: true
+    },
+    contactNumber: {
+        type: String,
+        required: true,
+        default: "N/A"
+    },
+    isOpen: {
+        type: Boolean,
+        default: true
+    },
+    isVerified: {
+        type: Boolean,
+        default: false
+    },
+    averageRating: {
+        type: Number,
+        default: 0
+    },
+    numReviews: {
+        type: Number,
+        default: 0
+    },
+    location: {
+        type: {
+            type: String,
+            enum: ['Point'],
+            default: 'Point'
+        },
+        coordinates: {
+            type: [Number],
+            default: [0, 0]
+        }
     }
 }, { timestamps: true });
+restaurantSchema.index({ location: "2dsphere" });
 export const Restaurant = mongoose.model("Restaurant", restaurantSchema);

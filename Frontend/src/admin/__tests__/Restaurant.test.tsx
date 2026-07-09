@@ -65,6 +65,12 @@ describe("Restaurant Component", () => {
         fireEvent.change(screen.getByPlaceholderText(/Enter your restaurant name/i), {
             target: { value: "Test Restaurant" },
         });
+        fireEvent.change(screen.getByPlaceholderText(/Enter restaurant contact number/i), {
+            target: { value: "9876543210" },
+        });
+        fireEvent.change(screen.getByPlaceholderText(/Enter restaurant address or pin it below/i), {
+            target: { value: "123 Test Street" },
+        });
         fireEvent.change(screen.getByPlaceholderText(/Enter your city name/i), {
             target: { value: "Test City" },
         });

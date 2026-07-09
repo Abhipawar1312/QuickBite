@@ -10,4 +10,5 @@ export type CartState = {
     removeFromTheCart: (id: string) => void;
     incrementQuantity: (id: string) => void;
     decrementQuantity: (id: string) => void;
+    setCart: (items: CartItem[]) => void;
 }

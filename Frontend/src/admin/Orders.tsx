@@ -1,6 +1,7 @@
 "use client";
 
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -10,8 +11,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useRestaurantStore } from "@/store/useRestaurantStore";
-import { useEffect } from "react";
+import { useUserStore } from "@/store/useUserStore";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { io } from "socket.io-client";
 import {
   Package,
   MapPin,
@@ -20,6 +23,7 @@ import {
   CheckCircle,
   Truck,
   User,
+  Bike,
 } from "lucide-react";
 
 const STATUS_CONFIG = {
@@ -35,6 +39,10 @@ const STATUS_CONFIG = {
     color: "bg-blue-100 text-blue-800 border-blue-200",
     icon: Package,
   },
+  ready_for_riders: {
+    color: "bg-purple-100 text-purple-800 border-purple-200",
+    icon: Bike,
+  },
   outfordelivery: {
     color: "bg-orange-100 text-orange-800 border-orange-200",
     icon: Truck,
@@ -46,16 +54,59 @@ const STATUS_CONFIG = {
 };
 
 const Orders = () => {
-  const { restaurantOrder, getRestaurantOrders, updateRestaurantOrder } =
+  const { user } = useUserStore();
+  const { restaurantOrder, getRestaurantOrders, updateRestaurantOrder, updateLocalRestaurantOrder, addLocalRestaurantOrder } =
     useRestaurantStore();
+
+  const [disabledRetries, setDisabledRetries] = useState<Record<string, number>>({});
 
   const handleStatusChange = async (id: string, status: string) => {
     await updateRestaurantOrder(id, status);
   };
 
+  const handleRetryBroadcast = async (id: string) => {
+    setDisabledRetries((prev) => ({ ...prev, [id]: 10 }));
+    const interval = setInterval(() => {
+      setDisabledRetries((prev) => {
+        const val = prev[id] || 0;
+        if (val <= 1) {
+          clearInterval(interval);
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        }
+        return { ...prev, [id]: val - 1 };
+      });
+    }, 1000);
+    await updateRestaurantOrder(id, "ready_for_riders");
+  };
+
   useEffect(() => {
     getRestaurantOrders();
   }, []);
+
+  // Web socket listeners for real-time status updates from riders
+  useEffect(() => {
+    if (!user) return;
+
+    const socket = io("http://localhost:8000", {
+      query: { userId: user._id }
+    });
+
+    socket.on("order_status_updated", (updatedOrder: any) => {
+      console.log("Restaurant Orders received status update via socket:", updatedOrder);
+      updateLocalRestaurantOrder(updatedOrder);
+    });
+
+    socket.on("new_restaurant_order", (newOrder: any) => {
+      console.log("Restaurant Orders received new order via socket:", newOrder);
+      addLocalRestaurantOrder(newOrder);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [user, updateLocalRestaurantOrder]);
 
   return (
     <motion.div
@@ -174,7 +225,7 @@ const Orders = () => {
                           className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border font-semibold text-sm ${statusConfig.color}`}
                         >
                           <StatusIcon className="w-4 h-4" />
-                          <span className="capitalize">{order.status}</span>
+                          <span className="capitalize">{order.status.replace(/_/g, " ")}</span>
                         </div>
                       </div>
 
@@ -187,7 +238,7 @@ const Orders = () => {
                           onValueChange={(newStatus) =>
                             handleStatusChange(order._id, newStatus)
                           }
-                          defaultValue={order.status}
+                          value={order.status}
                         >
                           <SelectTrigger className="h-12 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 transition-all duration-300">
                             <SelectValue placeholder="Select Status" />
@@ -198,6 +249,7 @@ const Orders = () => {
                                 "Pending",
                                 "Confirmed",
                                 "Preparing",
+                                "Ready_For_Riders",
                                 "OutForDelivery",
                                 "Delivered",
                               ].map((status: string, index: number) => {
@@ -214,7 +266,7 @@ const Orders = () => {
                                   >
                                     <div className="flex items-center gap-2">
                                       <StatusIcon className="w-4 h-4" />
-                                      {status}
+                                      {status.replace(/_/g, " ")}
                                     </div>
                                   </SelectItem>
                                 );
@@ -223,6 +275,48 @@ const Orders = () => {
                           </SelectContent>
                         </Select>
                       </div>
+
+                      {order.status === "ready_for_riders" && !order.rider && (
+                        <div className="bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 rounded-xl p-4 mt-3 text-center space-y-3">
+                          <div className="flex items-center justify-center gap-2 text-xs font-semibold text-purple-700 dark:text-purple-400">
+                            <span className="w-2.5 h-2.5 rounded-full bg-purple-500 animate-ping shrink-0" />
+                            Waiting for riders to accept...
+                          </div>
+                          <Button
+                            size="sm"
+                            disabled={disabledRetries[order._id] > 0}
+                            onClick={() => handleRetryBroadcast(order._id)}
+                            className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white font-semibold text-xs py-2 rounded-lg shadow transition-all duration-300"
+                          >
+                            {disabledRetries[order._id] > 0
+                              ? `Retry in ${disabledRetries[order._id]}s`
+                              : "Retry Ready for Riders"}
+                          </Button>
+                        </div>
+                      )}
+
+                      {order.rider && (
+                        <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-xl p-4 mt-3 text-xs text-slate-600 dark:text-slate-400 space-y-2">
+                          <div className="flex justify-between font-semibold text-slate-800 dark:text-slate-200">
+                            <span>Assigned Rider:</span>
+                            <span className="text-green-700 dark:text-green-400">{order.rider.fullname}</span>
+                          </div>
+                          {order.rider.contact && (
+                            <div className="flex justify-between">
+                              <span>Rider Contact:</span>
+                              <span className="font-mono font-medium text-slate-900 dark:text-white">{order.rider.contact}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between">
+                            <span>Delivery Status:</span>
+                            <span className="capitalize font-medium text-slate-900 dark:text-white">
+                              {order.riderStatus === "reached_restaurant"
+                                ? "Driving to Customer"
+                                : order.riderStatus?.replace(/_/g, " ") || "Accepted"}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </motion.div>

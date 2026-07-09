@@ -3,6 +3,7 @@ import uploadImageOnCloudinary from "../utils/imageUpload";
 import { Menu } from "../models/menu.model";
 import { Restaurant } from "../models/restaurant.model";
 import mongoose from "mongoose";
+import { getIo } from "../utils/socket";
 
 export const addMenu = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -31,6 +32,14 @@ export const addMenu = async (req: Request, res: Response): Promise<void> => {
             // Ensure menus is an array of ObjectIds before pushing
             (restaurant.menus as mongoose.Types.ObjectId[]).push(menu._id as mongoose.Types.ObjectId);
             await restaurant.save();
+
+            // Emit real-time menu change
+            const io = getIo();
+            io.emit("restaurant_menu_changed", {
+                restaurantId: (restaurant._id as any).toString(),
+                menu,
+                action: "add"
+            });
         }
 
         res.status(201).json({
@@ -71,6 +80,16 @@ export const editMenu = async (req: Request, res: Response): Promise<void> => {
 
         await menu.save();
 
+        const restaurant = await Restaurant.findOne({ menus: { $in: [menu._id] } });
+        if (restaurant) {
+            const io = getIo();
+            io.emit("restaurant_menu_changed", {
+                restaurantId: (restaurant._id as any).toString(),
+                menu,
+                action: "edit"
+            });
+        }
+
         res.status(200).json({
             success: true,
             message: "Menu updated successfully",
@@ -102,6 +121,12 @@ export const deleteMenu = async (req: Request, res: Response): Promise<void> => 
                 menuId => menuId.toString() !== id
             );
             await restaurant.save();
+            const io = getIo();
+            io.emit("restaurant_menu_changed", {
+                restaurantId: (restaurant._id as any).toString(),
+                menuId: id,
+                action: "delete"
+            });
         }
 
         // Delete the menu
@@ -156,6 +181,13 @@ export const toggleMenuAvailability = async (req: Request, res: Response): Promi
 
         menu.availability = availability;
         await menu.save();
+
+        const io = getIo();
+        io.emit("restaurant_menu_changed", {
+            restaurantId: (restaurant._id as any).toString(),
+            menu,
+            action: "edit"
+        });
 
         res.status(200).json({
             success: true,

@@ -209,6 +209,116 @@ export const useRestaurantStore = create<RestaurantState>()(persist((set, get) =
         } catch (error: any) {
             toast.error(error.response?.data?.message || 'Failed to update order status');
         }
+    },
+    updateLocalRestaurantOrder: (updatedOrder: any) => {
+        const updatedList = get().restaurantOrder.map((order: any) => {
+            return order._id === updatedOrder._id ? updatedOrder : order;
+        });
+        set({ restaurantOrder: updatedList });
+    },
+    addLocalRestaurantOrder: (newOrder: any) => {
+        set((state) => {
+            const exists = state.restaurantOrder.some((order: any) => order._id === newOrder._id);
+            if (exists) {
+                return {
+                    restaurantOrder: state.restaurantOrder.map((order: any) =>
+                        order._id === newOrder._id ? newOrder : order
+                    )
+                };
+            }
+            return {
+                restaurantOrder: [newOrder, ...state.restaurantOrder]
+            };
+        });
+    },
+    updateSingleRestaurantMenu: (data: { action: "add" | "edit" | "delete", menu?: MenuItem, menuId?: string }) => {
+        set((state: any) => {
+            if (!state.singleRestaurant) return state;
+            let updatedMenus = [...state.singleRestaurant.menus];
+
+            if (data.action === "add" && data.menu) {
+                if (!updatedMenus.some(m => m._id === data.menu!._id)) {
+                    updatedMenus = [data.menu, ...updatedMenus];
+                }
+            } else if (data.action === "edit" && data.menu) {
+                updatedMenus = updatedMenus.map(m => m._id === data.menu!._id ? data.menu! : m);
+            } else if (data.action === "delete" && data.menuId) {
+                updatedMenus = updatedMenus.filter(m => m._id !== data.menuId);
+            }
+
+            return {
+                singleRestaurant: {
+                    ...state.singleRestaurant,
+                    menus: updatedMenus
+                }
+            };
+        });
+    },
+    updateSingleRestaurantRatings: (averageRating: number, numReviews: number) => {
+        set((state: any) => {
+            if (!state.singleRestaurant) return state;
+            return {
+                singleRestaurant: {
+                    ...state.singleRestaurant,
+                    averageRating,
+                    numReviews
+                }
+            };
+        });
+    },
+    toggleRestaurantStatus: async () => {
+        try {
+            set({ loading: true });
+            const response = await axios.put(`${API_END_POINT}/status`);
+            if (response.data.success) {
+                toast.success(response.data.message);
+                set((state: any) => ({
+                    restaurant: state.restaurant ? { ...state.restaurant, isOpen: response.data.isOpen } : null,
+                    loading: false
+                }));
+            }
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'Failed to toggle status');
+            set({ loading: false });
+        }
+    },
+    getAllRestaurantsAdmin: async () => {
+        try {
+            set({ loading: true });
+            const response = await axios.get(`${API_END_POINT}/admin/all`);
+            set({ loading: false });
+            return response.data.restaurants;
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'Failed to fetch admin restaurants');
+            set({ loading: false });
+            return [];
+        }
+    },
+    verifyRestaurantAdmin: async (restaurantId: string) => {
+        try {
+            set({ loading: true });
+            const response = await axios.put(`${API_END_POINT}/admin/${restaurantId}/verify`);
+            if (response.data.success) {
+                toast.success(response.data.message);
+                set({ loading: false });
+            }
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'Failed to verify restaurant');
+            set({ loading: false });
+        }
+    },
+    deleteRestaurantAdmin: async (restaurantId: string) => {
+        try {
+            set({ loading: true });
+            const response = await axios.delete(`${API_END_POINT}/admin/${restaurantId}`);
+            if (response.data.success) {
+                toast.success(response.data.message);
+                set({ loading: false });
+            }
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'Failed to delete restaurant');
+            set({ loading: false });
+        }
     }
 
 }), {

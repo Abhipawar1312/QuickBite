@@ -1,13 +1,14 @@
 "use client";
 
 import { Eye, EyeOff, Loader2, LockKeyhole, Mail } from "lucide-react";
-import { type ChangeEvent, type FormEvent, useState } from "react";
+import { type ChangeEvent, type FormEvent, useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { type LoginInputState, userLoginSchema } from "@/schema/userSchema";
 import { useUserStore } from "@/store/useUserStore";
+import { useThemeStore } from "@/store/useThemeStore";
 import { motion } from "framer-motion";
 import Icon from "@/assets/Icon.png";
 
@@ -18,8 +19,49 @@ const Login = () => {
   });
   const [errors, setErrors] = useState<Partial<LoginInputState>>({});
   const [showPassword, setShowPassword] = useState(false);
-  const { loading, login } = useUserStore();
+  const { loading, login, loginWithGoogle } = useUserStore();
+  const { theme } = useThemeStore();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    /* global google */
+    const handleGoogleLoginResponse = async (response: any) => {
+      try {
+        if (response.credential) {
+          await loginWithGoogle(response.credential);
+          navigate("/");
+        }
+      } catch (error) {
+        console.error("Google login failure:", error);
+      }
+    };
+
+    if (typeof window !== "undefined" && (window as any).google) {
+      try {
+        const googleClientId = process.env.VITE_GOOGLE_CLIENT_ID || "1028789312563-mockclientid.apps.googleusercontent.com";
+        (window as any).google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: handleGoogleLoginResponse,
+        });
+
+        (window as any).google.accounts.id.renderButton(
+          document.getElementById("googleSignInButton"),
+          {
+            theme: theme === "dark" ? "filled_black" : "outline",
+            size: "large",
+            width: "380",
+            text: "continue_with",
+            shape: "rectangular",
+          }
+        );
+
+        // Optional: Trigger Google One Tap Login
+        (window as any).google.accounts.id.prompt();
+      } catch (err) {
+        console.warn("Failed to initialize Google Sign-in:", err);
+      }
+    }
+  }, [theme, loginWithGoogle, navigate]);
 
   const changeEventHandler = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -259,6 +301,19 @@ const Login = () => {
               transition={{ delay: 0.7 }}
             >
               <Separator className="bg-slate-200 dark:bg-slate-700" />
+            </motion.div>
+
+            {/* Google Login button */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.75 }}
+              className="flex justify-center w-full"
+            >
+              <div
+                id="googleSignInButton"
+                className="w-full flex justify-center min-h-[44px] transition-all duration-300"
+              ></div>
             </motion.div>
 
             {/* Signup link */}
