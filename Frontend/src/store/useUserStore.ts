@@ -10,6 +10,7 @@ const API_END_POINT = "https://quickbite-ogw0.onrender.com/api/v1/user"
 axios.defaults.withCredentials = true;
 
 type User = {
+    _id: string;
     fullname: string;
     email: string;
     contact?: number;

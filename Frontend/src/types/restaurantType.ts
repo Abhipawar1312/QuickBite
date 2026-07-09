@@ -24,6 +24,13 @@ export type Restaurant = {
     contactNumber?: string;
     isOpen?: boolean;
     isVerified?: boolean;
+    address?: string;
+    location?: {
+        type: string;
+        coordinates: [number, number];
+    };
+    averageRating?: number;
+    numReviews?: number;
 }
 
 export type SearchedRestaurant = {
