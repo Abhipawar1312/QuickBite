@@ -3,13 +3,15 @@ import mongoose, { Document, Model } from "mongoose";
 export interface IUser {
     fullname: string;
     email: string;
-    password: string;
-    contact: number;
+    password?: string;
+    contact?: number;
     address: string;
     city: string;
     country: string;
     profilePicture: string;
     admin: boolean;
+    role?: 'user' | 'restaurant_owner' | 'admin' | 'rider';
+    isRoleSelected?: boolean;
     lastLogin?: Date;
     isVerified?: boolean;
     resetPasswordToken?: string;
@@ -34,11 +36,11 @@ const userSchema = new mongoose.Schema<IUserDocument>({
     },
     password: {
         type: String,
-        required: true
+        required: false
     },
     contact: {
         type: Number,
-        required: true
+        required: false
     },
     address: {
         type: String,
@@ -57,6 +59,15 @@ const userSchema = new mongoose.Schema<IUserDocument>({
         default: ""
     },
     admin: {
+        type: Boolean,
+        default: false
+    },
+    role: {
+        type: String,
+        enum: ['user', 'restaurant_owner', 'admin', 'rider'],
+        default: 'user'
+    },
+    isRoleSelected: {
         type: Boolean,
         default: false
     },

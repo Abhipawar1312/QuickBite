@@ -12,31 +12,75 @@ import {
   User,
   Save,
   Edit3,
+  Bike,
+  Shield,
+  Phone,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { type FormEvent, useRef, useState } from "react";
+import { type FormEvent, useRef, useState, useEffect } from "react";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Button } from "./ui/button";
 import { useUserStore } from "@/store/useUserStore";
+import { useRiderStore } from "@/store/useRiderStore";
+import { MapAddressPicker } from "./MapAddressPicker";
 import { motion, AnimatePresence } from "framer-motion";
 
 const Profile = () => {
   const { user, updateProfile } = useUserStore();
+  const { riderProfile, getRiderProfile } = useRiderStore();
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [showMapPicker, setShowMapPicker] = useState(false);
+  const [selectedProfilePicture, setSelectedProfilePicture] = useState<string>(user?.profilePicture || "");
   const imageRef = useRef<HTMLInputElement | null>(null);
   const [profileData, setProfileData] = useState({
     fullname: user?.fullname || "",
     email: user?.email || "",
+    contact: user?.contact?.toString() || "",
     address: user?.address || "",
     city: user?.city || "",
     country: user?.country || "",
     profilePicture: user?.profilePicture || "",
+    vehicleName: "",
+    licenseNumber: "",
+    latitude: undefined as number | undefined,
+    longitude: undefined as number | undefined,
   });
-  const [selectedProfilePicture, setSelectedProfilePicture] = useState<string>(
-    user?.profilePicture || ""
-  );
+
+  useEffect(() => {
+    if (user?.role === "rider") {
+      getRiderProfile();
+    }
+  }, [user?.role, getRiderProfile]);
+
+  useEffect(() => {
+    if (user && !isEditing) {
+      setProfileData((prev) => ({
+        ...prev,
+        fullname: user.fullname || "",
+        email: user.email || "",
+        contact: user.contact?.toString() || "",
+        address: user.address || "",
+        city: user.city || "",
+        country: user.country || "",
+      }));
+      setSelectedProfilePicture(user.profilePicture || "");
+    }
+  }, [user, isEditing]);
+
+  useEffect(() => {
+    if (riderProfile) {
+      setProfileData((prev) => ({
+        ...prev,
+        vehicleName: riderProfile.vehicleName || "",
+        licenseNumber: riderProfile.licenseNumber || "",
+        contact: riderProfile.contact || prev.contact || "",
+        latitude: riderProfile.location?.coordinates?.[1],
+        longitude: riderProfile.location?.coordinates?.[0],
+      }));
+    }
+  }, [riderProfile]);
 
   const changeHandler = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -48,6 +92,9 @@ const Profile = () => {
     try {
       setIsLoading(true);
       await updateProfile(profileData);
+      if (user?.role === "rider") {
+        await getRiderProfile();
+      }
       setIsLoading(false);
       setIsEditing(false);
     } catch (error) {
@@ -87,6 +134,13 @@ const Profile = () => {
       type: "email",
     },
     {
+      label: "Contact Number",
+      icon: Phone,
+      name: "contact",
+      disabled: false,
+      type: "text",
+    },
+    {
       label: "Address",
       icon: LocateIcon,
       name: "address",
@@ -108,6 +162,43 @@ const Profile = () => {
       type: "text",
     },
   ];
+
+  if (user?.role === "rider") {
+    formFields.push(
+      {
+        label: "Vehicle Name / Type",
+        icon: Bike,
+        name: "vehicleName",
+        disabled: false,
+        type: "text",
+      },
+      {
+        label: "Driver License Number",
+        icon: Shield,
+        name: "licenseNumber",
+        disabled: false,
+        type: "text",
+      }
+    );
+  }
+
+  const handleMapConfirm = (data: {
+    address: string;
+    city: string;
+    pincode: string;
+    country: string;
+    latitude: number;
+    longitude: number;
+  }) => {
+    setProfileData((prev) => ({
+      ...prev,
+      address: data.address,
+      city: data.city,
+      country: data.country,
+      latitude: data.latitude,
+      longitude: data.longitude,
+    }));
+  };
 
   return (
     <motion.div
@@ -240,22 +331,32 @@ const Profile = () => {
                     </div>
                     {field.label}
                   </Label>
-                  <div className="relative">
+                  <div className="relative flex items-center">
                     <Input
                       name={field.name}
                       type={field.type}
                       disabled={field.disabled || !isEditing}
                       placeholder={`Enter your ${field.label.toLowerCase()}`}
                       value={
-                        profileData[field.name as keyof typeof profileData]
+                        profileData[field.name as keyof typeof profileData] || ""
                       }
                       onChange={changeHandler}
-                      className={`pl-4 pr-4 py-3 rounded-xl border-2 transition-all duration-300 ${
+                      className={`pl-4 ${field.name === "address" ? "pr-12" : "pr-4"} py-3 rounded-xl border-2 transition-all duration-300 w-full ${
                         field.disabled || !isEditing
                           ? "bg-slate-100 dark:bg-slate-700 cursor-not-allowed opacity-60"
                           : "bg-white dark:bg-slate-800 hover:border-orange-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 dark:focus:ring-orange-800"
                       }`}
                     />
+                    {field.name === "address" && isEditing && (
+                      <button
+                        type="button"
+                        onClick={() => setShowMapPicker(true)}
+                        className="absolute right-3 p-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 dark:bg-orange-950/40 dark:hover:bg-orange-900/60 text-orange-600 dark:text-orange-400 transition-colors duration-200"
+                        title="Pin location on map"
+                      >
+                        <MapPin className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </motion.div>
               );
@@ -306,6 +407,14 @@ const Profile = () => {
           </AnimatePresence>
         </form>
       </motion.div>
+
+      <MapAddressPicker
+        open={showMapPicker}
+        onClose={() => setShowMapPicker(false)}
+        onConfirm={handleMapConfirm}
+        initialLat={profileData.latitude}
+        initialLng={profileData.longitude}
+      />
     </motion.div>
   );
 };

@@ -12,12 +12,14 @@ axios.defaults.withCredentials = true;
 type User = {
     fullname: string;
     email: string;
-    contact: number;
+    contact?: number;
     address: string;
     city: string;
     country: string;
     profilePicture: string;
     admin: boolean;
+    role?: 'user' | 'restaurant_owner' | 'admin' | 'rider';
+    isRoleSelected?: boolean;
     isVerified: boolean;
 };
 
@@ -28,12 +30,14 @@ type UserState = {
     loading: boolean;
     signup: (input: SignupInputState) => Promise<void>;
     login: (input: LoginInputState) => Promise<void>;
+    loginWithGoogle: (idToken: string) => Promise<void>;
     verifyEmail: (verificationCode: string) => Promise<void>;
     checkAuthentication: () => Promise<void>;
     logout: () => Promise<void>;
     forgotPassword: (email: string) => Promise<void>;
     resetPassword: (token: string, newPassword: string) => Promise<void>;
     updateProfile: (input: any) => Promise<void>;
+    selectRole: (role: string) => Promise<void>;
 };
 
 export const useUserStore = create<UserState>()(
@@ -83,6 +87,26 @@ export const useUserStore = create<UserState>()(
                     toast.error(message);
                     set({ loading: false });
                     throw new Error(message); // 👈 this is key
+                }
+            },
+
+            loginWithGoogle: async (idToken: string) => {
+                try {
+                    set({ loading: true });
+                    const response = await axios.post(`${API_END_POINT}/google-login`, { idToken }, {
+                        headers: { 'Content-Type': 'application/json' },
+                    });
+                    if (response.data.success) {
+                        toast.success(response.data.message);
+                        set({ loading: false, user: response.data.user, isAuthenticated: true });
+                    } else {
+                        throw new Error(response.data.message);
+                    }
+                } catch (error: any) {
+                    const message = error?.response?.data?.message || error.message || "Google login failed";
+                    toast.error(message);
+                    set({ loading: false });
+                    throw new Error(message);
                 }
             },
 
@@ -188,6 +212,20 @@ export const useUserStore = create<UserState>()(
                     }
                 } catch (error: any) {
                     toast.error(error.response.data.message);
+                }
+            },
+
+            selectRole: async (role: string) => {
+                try {
+                    set({ loading: true });
+                    const response = await axios.put(`${API_END_POINT}/select-role`, { role });
+                    if (response.data.success) {
+                        toast.success(response.data.message);
+                        set({ user: response.data.user, isAuthenticated: true, loading: false });
+                    }
+                } catch (error: any) {
+                    toast.error(error.response?.data?.message || "Failed to select role");
+                    set({ loading: false });
                 }
             },
         }),

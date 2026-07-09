@@ -11,7 +11,7 @@ import {
   MapPin,
   X,
   Search,
-  // Star,
+  Star,
   Clock,
 } from "lucide-react";
 import { Card, CardContent, CardFooter } from "./ui/card";
@@ -216,10 +216,15 @@ const SearchPage = () => {
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
                         {/* Rating Badge */}
-                        {/* <div className="absolute top-4 right-4 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1">
-                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                          <span className="text-sm font-semibold">4.5</span>
-                        </div> */}
+                        <div className="absolute top-4 right-4 bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1.5 shadow-md">
+                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 animate-pulse" />
+                          <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                            {restaurant.averageRating || "0.0"}
+                          </span>
+                          <span className="text-[10px] text-slate-500">
+                            ({restaurant.numReviews || 0})
+                          </span>
+                        </div>
                       </div>
 
                       <CardContent className="p-6 space-y-4">

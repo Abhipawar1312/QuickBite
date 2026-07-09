@@ -1,6 +1,6 @@
 "use client";
 
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Menubar,
   MenubarContent,
@@ -21,8 +21,9 @@ import {
   LogOut,
   Home,
   UserCircle,
-  // Bell,
-  // Search,
+  Shield,
+  Bike,
+  Bell,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import {
@@ -38,16 +39,121 @@ import {
 import { Separator } from "./ui/separator";
 import { useUserStore } from "@/store/useUserStore";
 import { useCartStore } from "@/store/useCartStore";
+import { useNotificationStore } from "@/store/useNotificationStore";
+import { useRestaurantStore } from "@/store/useRestaurantStore";
+import { useOrderStore } from "@/store/useOrderStore";
+import { useEffect } from "react";
+import { io } from "socket.io-client";
 import DarkMode from "./Darkmode";
 import Icon from "@/assets/Icon.png";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "./ui/badge";
 
 const Navbar = () => {
+  const navigate = useNavigate();
   const { user, loading, logout } = useUserStore();
   const { cart } = useCartStore();
+  const { unreadCount, addNotification } = useNotificationStore();
+  const { addLocalRestaurantOrder, updateLocalRestaurantOrder } = useRestaurantStore();
+  const { updateLocalOrderStatus } = useOrderStore();
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  // Global socket notification listener
+  useEffect(() => {
+    if (!user) return;
+
+    const socket = io("http://localhost:8000", {
+      query: { userId: user._id, role: user.role }
+    });
+
+    // 1. New delivery available (Riders)
+    socket.on("new_order_available", (order: any) => {
+      addNotification({
+        title: "New Delivery Available!",
+        message: `Order #${order._id.slice(-6)} is available from ${order.restaurant?.restaurantName || "restaurant"}.`,
+        type: "new_order",
+        link: "/rider/dashboard"
+      });
+    });
+
+    // 2. New confirmed order (Restaurant Owners) — also push to owner dashboard store
+    socket.on("new_restaurant_order", (order: any) => {
+      addNotification({
+        title: "New Order Confirmed!",
+        message: `Order #${order._id.slice(-6)} confirmed by ${order.deliveryDetails?.name}.`,
+        type: "new_order",
+        link: "/admin/orders"
+      });
+      // Push directly into restaurant orders store so /admin/orders page updates instantly
+      addLocalRestaurantOrder(order);
+    });
+
+    // 3. Rider accepted (Customers) — update order status in customer store
+    socket.on("rider_accepted", (data: any) => {
+      addNotification({
+        title: "Rider Assigned!",
+        message: data.message || "A delivery partner has accepted your order.",
+        type: "rider_accepted",
+        link: "/order/status"
+      });
+    });
+
+    socket.on("rider_reached_restaurant", (data: any) => {
+      addNotification({
+        title: "Food Picked Up!",
+        message: data.message || "Your delivery partner picked up your food!",
+        type: "outfordelivery",
+        link: "/order/status"
+      });
+    });
+
+    socket.on("order_delivered_notification", (data: any) => {
+      addNotification({
+        title: "Order Delivered!",
+        message: data.message || "Your order has been delivered! Enjoy your meal!",
+        type: "delivered",
+        link: "/order/status"
+      });
+    });
+
+    socket.on("order_cancelled", (data: any) => {
+      addNotification({
+        title: "Order Cancelled",
+        message: data.message || "Your order has been cancelled by the restaurant.",
+        type: "cancelled",
+        link: "/order/status"
+      });
+    });
+
+    // 4. Order status updated — update customer order store AND restaurant store in real-time
+    socket.on("order_status_updated", (order: any) => {
+      const readableStatus = order.status.replace(/_/g, " ");
+      addNotification({
+        title: "Order Status Updated",
+        message: `Order #${order._id.slice(-6)} is now: ${readableStatus}.`,
+        type: "status_update",
+        link: "/order/status"
+      });
+      // Update both stores so whichever page is open stays in sync
+      updateLocalOrderStatus(order);
+      updateLocalRestaurantOrder(order);
+    });
+
+    // 5. Rider profile verified by admin
+    socket.on("rider_verified", (data: any) => {
+      addNotification({
+        title: "🎉 Profile Verified!",
+        message: data.message || "Your rider profile has been verified. You can now go online and accept deliveries!",
+        type: "delivered",
+        link: "/rider/dashboard"
+      });
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [user, addNotification, addLocalRestaurantOrder, updateLocalOrderStatus, updateLocalRestaurantOrder]);
 
   return (
     <motion.nav
@@ -86,36 +192,54 @@ const Navbar = () => {
             </Link>
           </motion.div>
 
-          {/* Desktop Navigation */}
+          {/* Desktop Navigation - role-filtered */}
           <div className="hidden lg:flex items-center gap-8">
-            {/* Navigation Links */}
             <div className="flex items-center gap-2">
-              {[
-                { to: "/", label: "Home", icon: Home },
-                { to: "/profile", label: "Profile", icon: UserCircle },
-                { to: "/order/status", label: "Orders", icon: HandPlatter },
-              ].map((link, index) => {
-                const Icon = link.icon;
-                return (
-                  <motion.div
-                    key={link.to}
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    whileHover={{ y: -2 }}
-                  >
-                    <Link
-                      to={link.to}
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-slate-700 dark:text-slate-300 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all duration-300 group font-medium"
-                    >
-                      <Icon className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
-                      <span className="text-sm">{link.label}</span>
-                    </Link>
-                  </motion.div>
-                );
-              })}
+              {/* Regular user links: Home, Profile, Orders */}
+              {user?.role !== "rider" && (
+                <>
+                  {[
+                    { to: "/", label: "Home", icon: Home },
+                    { to: "/profile", label: "Profile", icon: UserCircle },
+                    // Orders only for regular customers (not owner, not rider)
+                    ...(!user?.admin ? [{ to: "/order/status", label: "Orders", icon: HandPlatter }] : []),
+                  ].map((link, index) => {
+                    const Icon = link.icon;
+                    return (
+                      <motion.div
+                        key={link.to}
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        whileHover={{ y: -2 }}
+                      >
+                        <Link
+                          to={link.to}
+                          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-slate-700 dark:text-slate-300 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all duration-300 group font-medium"
+                        >
+                          <Icon className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
+                          <span className="text-sm">{link.label}</span>
+                        </Link>
+                      </motion.div>
+                    );
+                  })}
+                </>
+              )}
 
-              {/* Admin Dashboard */}
+              {/* Rider: only Profile link */}
+              {user?.role === "rider" && (
+                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} whileHover={{ y: -2 }}>
+                  <Link
+                    to="/profile"
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-slate-700 dark:text-slate-300 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all duration-300 group font-medium"
+                  >
+                    <UserCircle className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
+                    <span className="text-sm">Profile</span>
+                  </Link>
+                </motion.div>
+              )}
+
+              {/* Restaurant Owner Dashboard */}
               {user?.admin && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
@@ -153,6 +277,42 @@ const Navbar = () => {
                   </Menubar>
                 </motion.div>
               )}
+
+              {/* Platform Admin verification dashboard */}
+              {user?.role === "admin" && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  whileHover={{ y: -2 }}
+                >
+                  <Link
+                    to="/admin/dashboard"
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 font-medium shadow-lg hover:shadow-xl transition-all duration-300"
+                  >
+                    <Shield className="w-4 h-4" />
+                    <span className="text-sm">Admin Dashboard</span>
+                  </Link>
+                </motion.div>
+              )}
+
+              {/* Rider Dashboard */}
+              {user?.role === "rider" && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  whileHover={{ y: -2 }}
+                >
+                  <Link
+                    to="/rider/dashboard"
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 font-medium shadow-lg hover:shadow-xl transition-all duration-300"
+                  >
+                    <Bike className="w-4 h-4" />
+                    <span className="text-sm">Rider Dashboard</span>
+                  </Link>
+                </motion.div>
+              )}
             </div>
           </div>
 
@@ -175,21 +335,27 @@ const Navbar = () => {
             </motion.div> */}
 
             {/* Notifications - Desktop Only */}
-            {/* <motion.div
+            <motion.div
               initial={{ opacity: 0, scale: 0 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.5 }}
               className="hidden md:block"
             >
-              <Button
-                variant="ghost"
-                size="icon"
-                className="w-10 h-10 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors duration-300 group relative"
-              >
-                <Bell className="w-5 h-5 text-slate-600 dark:text-slate-400 group-hover:text-orange-500 transition-colors duration-300" />
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-              </Button>
-            </motion.div> */}
+              <Link to="/notifications">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-10 h-10 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors duration-300 group relative"
+                >
+                  <Bell className="w-5 h-5 text-slate-600 dark:text-slate-400 group-hover:text-orange-500 transition-colors duration-300" />
+                  {unreadCount > 0 && (
+                    <div className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold w-4.5 h-4.5 rounded-full flex items-center justify-center animate-pulse">
+                      {unreadCount}
+                    </div>
+                  )}
+                </Button>
+              </Link>
+            </motion.div>
 
             {/* Dark Mode Toggle */}
             <motion.div
@@ -200,44 +366,46 @@ const Navbar = () => {
               <DarkMode />
             </motion.div>
 
-            {/* Cart Button */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.7 }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Link to="/cart">
-                <Button
-                  variant="ghost"
-                  className="relative h-12 px-4 rounded-xl hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all duration-300 group border border-transparent hover:border-orange-200 dark:hover:border-orange-800"
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="relative">
-                      <ShoppingCart className="w-5 h-5 text-slate-700 dark:text-slate-300 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors duration-300" />
-                      <AnimatePresence>
-                        {totalItems > 0 && (
-                          <motion.div
-                            initial={{ scale: 0, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0, opacity: 0 }}
-                            className="absolute -top-2 -right-2"
-                          >
-                            <Badge className="h-5 w-5 p-0 flex items-center justify-center bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
-                              {totalItems > 99 ? "99+" : totalItems}
-                            </Badge>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+            {/* Cart Button — hidden for restaurant owners and riders */}
+            {!user?.admin && user?.role !== "rider" && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.7 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Link to="/cart">
+                  <Button
+                    variant="ghost"
+                    className="relative h-12 px-4 rounded-xl hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all duration-300 group border border-transparent hover:border-orange-200 dark:hover:border-orange-800"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="relative">
+                        <ShoppingCart className="w-5 h-5 text-slate-700 dark:text-slate-300 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors duration-300" />
+                        <AnimatePresence>
+                          {totalItems > 0 && (
+                            <motion.div
+                              initial={{ scale: 0, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              exit={{ scale: 0, opacity: 0 }}
+                              className="absolute -top-2 -right-2"
+                            >
+                              <Badge className="h-5 w-5 p-0 flex items-center justify-center bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
+                                {totalItems > 99 ? "99+" : totalItems}
+                              </Badge>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                      <span className="hidden sm:block text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors duration-300">
+                        Cart
+                      </span>
                     </div>
-                    <span className="hidden sm:block text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors duration-300">
-                      Cart
-                    </span>
-                  </div>
-                </Button>
-              </Link>
-            </motion.div>
+                  </Button>
+                </Link>
+              </motion.div>
+            )}
 
             {/* User Avatar */}
             <motion.div
@@ -308,12 +476,24 @@ const Navbar = () => {
 const MobileNavbar = () => {
   const { user, logout, loading } = useUserStore();
   const { cart } = useCartStore();
+  const { unreadCount } = useNotificationStore();
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
+  // Role-based mobile links
   const mobileLinks = [
-    { to: "/", label: "Home", icon: Home },
+    // Always: Profile
     { to: "/profile", label: "Profile", icon: User },
-    { to: "/order/status", label: "Orders", icon: HandPlatter },
+    // Regular users only: Home and Orders
+    ...(user?.role !== "rider" && !user?.admin
+      ? [
+          { to: "/", label: "Home", icon: Home },
+          { to: "/order/status", label: "My Orders", icon: HandPlatter },
+        ]
+      : []),
+    // Admin (restaurant owner): Home only (orders accessed from Dashboard)
+    ...(user?.admin
+      ? [{ to: "/", label: "Home", icon: Home }]
+      : []),
   ];
 
   const adminLinks = [
@@ -360,29 +540,55 @@ const MobileNavbar = () => {
         <Separator className="my-4 bg-slate-200 dark:bg-slate-700" />
 
         <SheetDescription className="flex-1 flex flex-col gap-2">
-          {/* Cart Link with Badge */}
+          {/* Notifications Link with Badge */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1 }}
+            transition={{ delay: 0.05 }}
           >
             <SheetClose asChild>
               <Link
-                to="/cart"
+                to="/notifications"
                 className="flex items-center justify-between hover:bg-orange-50 dark:hover:bg-orange-900/20 px-4 py-4 rounded-xl cursor-pointer hover:text-orange-600 dark:hover:text-orange-400 font-medium transition-all duration-300 group border border-transparent hover:border-orange-200 dark:hover:border-orange-800"
               >
                 <div className="flex items-center gap-4">
-                  <ShoppingCart className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" />
-                  <span>Cart</span>
+                  <Bell className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" />
+                  <span>Notifications</span>
                 </div>
-                {totalItems > 0 && (
+                {unreadCount > 0 && (
                   <Badge className="bg-gradient-to-r from-red-500 to-red-600 text-white font-bold">
-                    {totalItems > 99 ? "99+" : totalItems}
+                    {unreadCount}
                   </Badge>
                 )}
               </Link>
             </SheetClose>
           </motion.div>
+
+          {/* Cart Link — hidden for restaurant owners and riders */}
+          {!user?.admin && user?.role !== "rider" && (
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <SheetClose asChild>
+                <Link
+                  to="/cart"
+                  className="flex items-center justify-between hover:bg-orange-50 dark:hover:bg-orange-900/20 px-4 py-4 rounded-xl cursor-pointer hover:text-orange-600 dark:hover:text-orange-400 font-medium transition-all duration-300 group border border-transparent hover:border-orange-200 dark:hover:border-orange-800"
+                >
+                  <div className="flex items-center gap-4">
+                    <ShoppingCart className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" />
+                    <span>Cart</span>
+                  </div>
+                  {totalItems > 0 && (
+                    <Badge className="bg-gradient-to-r from-red-500 to-red-600 text-white font-bold">
+                      {totalItems > 99 ? "99+" : totalItems}
+                    </Badge>
+                  )}
+                </Link>
+              </SheetClose>
+            </motion.div>
+          )}
 
           {/* Main Navigation */}
           {mobileLinks.map((link, index) => {
@@ -414,7 +620,7 @@ const MobileNavbar = () => {
               <div className="px-4 py-2">
                 <h3 className="text-sm font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide flex items-center gap-2">
                   <SquareMenu className="w-4 h-4 text-orange-500" />
-                  Admin Panel
+                  Owner Panel
                 </h3>
               </div>
               {adminLinks.map((link, index) => {
@@ -438,6 +644,50 @@ const MobileNavbar = () => {
                   </motion.div>
                 );
               })}
+            </>
+          )}
+
+          {/* Super Admin verification links in mobile */}
+          {user?.role === "admin" && (
+            <>
+              <Separator className="my-4 bg-slate-200 dark:bg-slate-700" />
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.5 }}
+              >
+                <SheetClose asChild>
+                  <Link
+                    to="/admin/dashboard"
+                    className="flex items-center gap-4 hover:bg-orange-50 dark:hover:bg-orange-900/20 px-4 py-4 rounded-xl cursor-pointer hover:text-orange-600 dark:hover:text-orange-400 font-medium transition-all duration-300 group border border-transparent hover:border-orange-200 dark:hover:border-orange-800 text-orange-500 font-bold"
+                  >
+                    <Shield className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" />
+                    <span>Admin Dashboard</span>
+                  </Link>
+                </SheetClose>
+              </motion.div>
+            </>
+          )}
+
+          {/* Rider Dashboard links in mobile */}
+          {user?.role === "rider" && (
+            <>
+              <Separator className="my-4 bg-slate-200 dark:bg-slate-700" />
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.5 }}
+              >
+                <SheetClose asChild>
+                  <Link
+                    to="/rider/dashboard"
+                    className="flex items-center gap-4 hover:bg-orange-50 dark:hover:bg-orange-900/20 px-4 py-4 rounded-xl cursor-pointer hover:text-orange-600 dark:hover:text-orange-400 font-medium transition-all duration-300 group border border-transparent hover:border-orange-200 dark:hover:border-orange-800 text-orange-500 font-bold"
+                  >
+                    <Bike className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" />
+                    <span>Rider Dashboard</span>
+                  </Link>
+                </SheetClose>
+              </motion.div>
             </>
           )}
         </SheetDescription>

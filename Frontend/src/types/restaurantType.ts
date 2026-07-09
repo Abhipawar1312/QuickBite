@@ -21,6 +21,9 @@ export type Restaurant = {
     cuisines: string[];
     menus: MenuItem[];
     imageUrl: string;
+    contactNumber?: string;
+    isOpen?: boolean;
+    isVerified?: boolean;
 }
 
 export type SearchedRestaurant = {
@@ -48,4 +51,12 @@ export type RestaurantState = {
     getSingleRestaurant: (restaurantId: string) => Promise<void>;
     getRestaurantOrders: () => Promise<void>;
     updateRestaurantOrder: (orderId: string, status: string) => Promise<void>;
+    toggleRestaurantStatus: () => Promise<void>;
+    getAllRestaurantsAdmin: () => Promise<Restaurant[]>;
+    verifyRestaurantAdmin: (restaurantId: string) => Promise<void>;
+    deleteRestaurantAdmin: (restaurantId: string) => Promise<void>;
+    updateLocalRestaurantOrder: (updatedOrder: any) => void;
+    addLocalRestaurantOrder: (newOrder: any) => void;
+    updateSingleRestaurantMenu: (data: { action: "add" | "edit" | "delete", menu?: MenuItem, menuId?: string }) => void;
+    updateSingleRestaurantRatings: (averageRating: number, numReviews: number) => void;
 }

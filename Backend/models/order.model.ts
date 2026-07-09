@@ -5,6 +5,9 @@ export interface IDeliveryDetails {
     name: string;
     address: string;
     city: string;
+    contact?: string;
+    latitude?: number;
+    longitude?: number;
 }
 
 export interface ICartItem {
@@ -19,9 +22,16 @@ export interface IOrder extends Document {
     user: mongoose.Types.ObjectId;
     restaurant: mongoose.Types.ObjectId;
     deliveryDetails: IDeliveryDetails;
-    cartItems: ICartItem[];               // ← array!
+    cartItems: ICartItem[];
     totalAmount?: number;
-    status: "pending" | "confirmed" | "preparing" | "outfordelivery" | "delivered";
+    status: "pending" | "confirmed" | "preparing" | "ready_for_riders" | "outfordelivery" | "delivered" | "Cancelled";
+    deliveryFee: number;
+    platformFee: number;
+    distanceKM: number;
+    cancellationReason?: string;
+    rider?: mongoose.Types.ObjectId;
+    riderStatus?: 'pending' | 'accepted' | 'reached_restaurant' | 'delivered';
+    isReviewed?: boolean;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -31,6 +41,9 @@ const DeliveryDetailsSchema = new Schema<IDeliveryDetails>({
     name: { type: String, required: true },
     address: { type: String, required: true },
     city: { type: String, required: true },
+    contact: { type: String, required: false },
+    latitude: { type: Number, required: false },
+    longitude: { type: Number, required: false },
 });
 
 const CartItemSchema = new Schema<ICartItem>({
@@ -50,9 +63,23 @@ const OrderSchema = new Schema<IOrder>(
         totalAmount: { type: Number },
         status: {
             type: String,
-            enum: ["pending", "confirmed", "preparing", "outfordelivery", "delivered"],
+            enum: ["pending", "confirmed", "preparing", "ready_for_riders", "outfordelivery", "delivered", "Cancelled"],
             default: "pending",
         },
+        deliveryFee: { type: Number, default: 0 },
+        platformFee: { type: Number, default: 0 },
+        distanceKM: { type: Number, default: 0 },
+        cancellationReason: { type: String, default: "" },
+        rider: { type: Schema.Types.ObjectId, ref: "User", default: null },
+        riderStatus: {
+            type: String,
+            enum: ["pending", "accepted", "reached_restaurant", "delivered"],
+            default: "pending"
+        },
+        isReviewed: {
+            type: Boolean,
+            default: false
+        }
     },
     { timestamps: true }
 );

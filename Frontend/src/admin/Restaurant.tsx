@@ -10,6 +10,7 @@ import {
   restaurantFromSchema,
 } from "@/schema/RestaurantSchema";
 import { useRestaurantStore } from "@/store/useRestaurantStore";
+import { MapAddressPicker } from "@/components/MapAddressPicker";
 import {
   Loader2,
   Store,
@@ -18,6 +19,7 @@ import {
   Clock,
   ChefHat,
   ImageIcon,
+  Phone,
 } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
 import { motion } from "framer-motion";
@@ -32,13 +34,18 @@ const Restaurant = () => {
     clearRestaurantData, // Add this
   } = useRestaurantStore();
 
+  const [showMapPicker, setShowMapPicker] = useState(false);
   const [input, setInput] = useState<RestaurantFormSchema>({
     restaurantName: "",
     city: "",
     country: "",
+    address: "",
     deliveryTime: 0,
     cuisines: [],
+    contactNumber: "",
     imageFile: undefined,
+    latitude: undefined,
+    longitude: undefined,
   });
   const [errors, setErrors] = useState<Partial<RestaurantFormSchema>>({});
 
@@ -60,11 +67,20 @@ const Restaurant = () => {
       formData.append("restaurantName", input.restaurantName);
       formData.append("city", input.city);
       formData.append("country", input.country);
+      formData.append("address", input.address);
       formData.append("deliveryTime", input.deliveryTime.toString());
       formData.append("cuisines", JSON.stringify(input.cuisines));
+      formData.append("contactNumber", input.contactNumber);
+      
+      if (input.latitude !== undefined && input.longitude !== undefined) {
+        formData.append("latitude", input.latitude.toString());
+        formData.append("longitude", input.longitude.toString());
+      }
+
       if (input.imageFile) {
         formData.append("imageFile", input.imageFile);
       }
+      
       if (restaurant) {
         await updateRestaurant(formData);
       } else {
@@ -93,11 +109,15 @@ const Restaurant = () => {
         restaurantName: restaurant.restaurantName || "",
         city: restaurant.city || "",
         country: restaurant.country || "",
+        address: restaurant.address || "",
         deliveryTime: restaurant.deliveryTime || 0,
         cuisines: restaurant.cuisines
           ? restaurant.cuisines.map((cuisine: string) => cuisine)
           : [],
+        contactNumber: restaurant.contactNumber || "",
         imageFile: undefined,
+        latitude: restaurant.location?.coordinates?.[1],
+        longitude: restaurant.location?.coordinates?.[0],
       });
     } else {
       // Reset form if no restaurant
@@ -105,9 +125,13 @@ const Restaurant = () => {
         restaurantName: "",
         city: "",
         country: "",
+        address: "",
         deliveryTime: 0,
         cuisines: [],
+        contactNumber: "",
         imageFile: undefined,
+        latitude: undefined,
+        longitude: undefined,
       });
     }
   }, [restaurant]);
@@ -118,6 +142,18 @@ const Restaurant = () => {
       label: "Restaurant Name",
       icon: Store,
       placeholder: "Enter your restaurant name",
+    },
+    {
+      name: "contactNumber",
+      label: "Contact Number",
+      icon: Phone,
+      placeholder: "Enter restaurant contact number",
+    },
+    {
+      name: "address",
+      label: "Address",
+      icon: MapPin,
+      placeholder: "Enter restaurant address or pin it below",
     },
     {
       name: "city",
@@ -139,6 +175,24 @@ const Restaurant = () => {
       type: "number",
     },
   ];
+
+  const handleMapConfirm = (data: {
+    address: string;
+    city: string;
+    pincode: string;
+    country: string;
+    latitude: number;
+    longitude: number;
+  }) => {
+    setInput((prev) => ({
+      ...prev,
+      address: data.address,
+      city: data.city,
+      country: data.country,
+      latitude: data.latitude,
+      longitude: data.longitude,
+    }));
+  };
 
   return (
     <motion.div
@@ -193,18 +247,32 @@ const Restaurant = () => {
                       <Icon className="w-4 h-4 text-orange-500" />
                       {field.label}
                     </Label>
-                    <Input
-                      type={field.type || "text"}
-                      name={field.name}
-                      value={
-                        input[field.name as keyof RestaurantFormSchema] as
-                        | string
-                        | number
-                      }
-                      onChange={changeEventHandler}
-                      placeholder={field.placeholder}
-                      className="h-12 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-orange-500 focus:ring-2 focus:ring-orange-200 dark:focus:ring-orange-800 transition-all duration-300"
-                    />
+                    <div className="relative flex items-center w-full">
+                      <Input
+                        type={field.type || "text"}
+                        name={field.name}
+                        value={
+                          (input[field.name as keyof RestaurantFormSchema] as
+                          | string
+                          | number) ?? ""
+                        }
+                        onChange={changeEventHandler}
+                        placeholder={field.placeholder}
+                        className={`h-12 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-orange-500 focus:ring-2 focus:ring-orange-200 dark:focus:ring-orange-800 transition-all duration-300 w-full ${
+                          field.name === "address" ? "pr-12" : ""
+                        }`}
+                      />
+                      {field.name === "address" && (
+                        <button
+                          type="button"
+                          onClick={() => setShowMapPicker(true)}
+                          className="absolute right-3 p-2 rounded-xl bg-orange-100 hover:bg-orange-200 dark:bg-orange-950/40 dark:hover:bg-orange-900/60 text-orange-600 dark:text-orange-400 transition-colors duration-200"
+                          title="Pin location on map"
+                        >
+                          <MapPin className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                     {errors &&
                       errors[field.name as keyof RestaurantFormSchema] && (
                         <motion.span
@@ -322,6 +390,14 @@ const Restaurant = () => {
           </form>
         </motion.div>
       </div>
+
+      <MapAddressPicker
+        open={showMapPicker}
+        onClose={() => setShowMapPicker(false)}
+        onConfirm={handleMapConfirm}
+        initialLat={input.latitude}
+        initialLng={input.longitude}
+      />
     </motion.div>
   );
 };

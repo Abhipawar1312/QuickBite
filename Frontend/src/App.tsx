@@ -4,6 +4,7 @@ import {
   createBrowserRouter,
   RouterProvider,
   Navigate,
+  useNavigate,
 } from "react-router-dom";
 import Loading from "./components/ui/Loading";
 import { useUserStore } from "./store/useUserStore";
@@ -24,23 +25,50 @@ const Restaurant = lazy(() => import("./admin/Restaurant"));
 const AddMenu = lazy(() => import("./admin/AddMenu"));
 const Orders = lazy(() => import("./admin/Orders"));
 const Success = lazy(() => import("./components/Success"));
+const AdminDashboard = lazy(() => import("./admin/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
+const RiderDashboard = lazy(() => import("./components/RiderDashboard").then(m => ({ default: m.RiderDashboard })));
+const NotificationsPage = lazy(() => import("./components/NotificationsPage"));
 
 // Route guards (no change)
 const ProtectedRoutes = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, user } = useUserStore();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Redirect riders to their dashboard when they land on "/"
+    if (isAuthenticated && user?.role === "rider" && window.location.pathname === "/") {
+      navigate("/rider/dashboard", { replace: true });
+    }
+  }, [isAuthenticated, user, navigate]);
+
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (!user?.isVerified) return <Navigate to="/verify-email" replace />;
   return <>{children}</>;
 };
 const AuthenticatedUser = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, user } = useUserStore();
-  if (isAuthenticated && user?.isVerified) return <Navigate to="/" replace />;
+  if (isAuthenticated && user?.isVerified) {
+    if (user?.role === "rider") return <Navigate to="/rider/dashboard" replace />;
+    return <Navigate to="/" replace />;
+  }
   return <>{children}</>;
 };
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isAuthenticated } = useUserStore();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (!user?.admin) return <Navigate to="/" replace />;
+  return <>{children}</>;
+};
+const SuperAdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, isAuthenticated } = useUserStore();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (user?.role !== "admin") return <Navigate to="/" replace />;
+  return <>{children}</>;
+};
+const RiderRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, isAuthenticated } = useUserStore();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (user?.role !== "rider") return <Navigate to="/" replace />;
   return <>{children}</>;
 };
 
@@ -60,6 +88,7 @@ const appRouter = createBrowserRouter([
       { path: "/restaurant/:id", element: <RestaurantDetail /> },
       { path: "/cart", element: <Cart /> },
       { path: "/order/status", element: <Success /> },
+      { path: "/notifications", element: <NotificationsPage /> },
       {
         path: "/admin/restaurant",
         element: (
@@ -82,6 +111,22 @@ const appRouter = createBrowserRouter([
           <AdminRoute>
             <Orders />
           </AdminRoute>
+        ),
+      },
+      {
+        path: "/admin/dashboard",
+        element: (
+          <SuperAdminRoute>
+            <AdminDashboard />
+          </SuperAdminRoute>
+        ),
+      },
+      {
+        path: "/rider/dashboard",
+        element: (
+          <RiderRoute>
+            <RiderDashboard />
+          </RiderRoute>
         ),
       },
     ],

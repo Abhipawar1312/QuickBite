@@ -39,6 +39,9 @@ export const useCartStore = create<CartState>()(persist((set) => ({
         set((state) => ({
             cart: state.cart.map((item) => item._id === id && item.quantity > 1 ? { ...item, quantity: item.quantity - 1 } : item)
         }))
+    },
+    setCart: (items) => {
+        set({ cart: items });
     }
 }),
     {

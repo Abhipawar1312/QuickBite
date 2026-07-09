@@ -66,7 +66,7 @@ describe("AvailableMenu Component", () => {
         ).toBeInTheDocument();
     });
 
-    test("adds item to cart and navigates on Add to Cart click", () => {
+    test("adds item to cart and does not navigate on Add to Cart click", () => {
         renderMenu(mockMenus);
 
         const addButton = screen.getAllByRole("button", {
@@ -76,7 +76,7 @@ describe("AvailableMenu Component", () => {
         fireEvent.click(addButton);
 
         expect(mockAddToCart).toHaveBeenCalledWith(mockMenus[0]);
-        expect(mockNavigate).toHaveBeenCalledWith("/cart");
+        expect(mockNavigate).not.toHaveBeenCalled();
     });
 
     test("disables Add to Cart button when item is out of stock", () => {

@@ -17,6 +17,8 @@ const config: Config = {
         '\\.(css|scss|sass)$': '<rootDir>/src/__mocks__/styleMock.ts',
         '\\.(jpg|jpeg|png|svg)$': '<rootDir>/src/__mocks__/fileMock.ts',
         '^@/(.*)$': '<rootDir>/src/$1',
+        '^react-leaflet$': '<rootDir>/src/__mocks__/reactLeafletMock.tsx',
+        '^leaflet$': '<rootDir>/src/__mocks__/leafletMock.ts',
     },
 
     setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],

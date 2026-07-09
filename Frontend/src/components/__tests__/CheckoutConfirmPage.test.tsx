@@ -33,7 +33,7 @@ jest.mock("@/store/useCartStore", () => ({
 
 jest.mock("@/store/useRestaurantStore", () => ({
     useRestaurantStore: () => ({
-        restaurant: { _id: "rest1" },
+        singleRestaurant: { _id: "rest1" },
         getRestaurant: jest.fn(),
     }),
 }));
@@ -60,6 +60,10 @@ describe("CheckoutConfirmPage", () => {
         render(
             <CheckoutConfirmPage open={true} setOpen={mockSetOpen} />
         );
+
+        fireEvent.change(screen.getByPlaceholderText(/pincode/i), {
+            target: { value: "400070", name: "pincode" },
+        });
 
         fireEvent.click(
             screen.getByRole("button", { name: /continue to payment/i })

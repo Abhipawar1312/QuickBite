@@ -7,6 +7,7 @@ export const userSignupSchema = z.object({
     contact: z
         .string()
         .regex(/^\d{10}$/, "Contact Number must be exactly 10 digits"),
+    role: z.enum(['user', 'restaurant_owner', 'rider']).optional(),
 });
 
 export type SignupInputState = z.infer<typeof userSignupSchema>;

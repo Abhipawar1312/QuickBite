@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Label } from "@/components/ui/label";
 import { type SignupInputState, userSignupSchema } from "@/schema/userSchema";
 import { useUserStore } from "@/store/useUserStore";
 import {
@@ -13,6 +14,8 @@ import {
   Mail,
   Phone,
   User,
+  UtensilsCrossed,
+  Bike,
 } from "lucide-react";
 import { type ChangeEvent, type FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -25,6 +28,7 @@ const SignUp = () => {
     email: "",
     password: "",
     contact: "",
+    role: "user",
   });
   const [errors, setErrors] = useState<Partial<SignupInputState>>({});
   const [showPassword, setShowPassword] = useState(false);
@@ -228,6 +232,58 @@ const SignUp = () => {
                 </motion.div>
               );
             })}
+
+            {/* Role Selector Card Grid */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+              className="space-y-2"
+            >
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Register As
+              </Label>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  {
+                    id: "user",
+                    label: "Customer",
+                    icon: User,
+                  },
+                  {
+                    id: "restaurant_owner",
+                    label: "Owner",
+                    icon: UtensilsCrossed,
+                  },
+                  {
+                    id: "rider",
+                    label: "Rider",
+                    icon: Bike,
+                  },
+                ].map((roleOption) => {
+                  const Icon = roleOption.icon;
+                  const isSelected = input.role === roleOption.id;
+                  return (
+                    <motion.div
+                      key={roleOption.id}
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setInput({ ...input, role: roleOption.id as any })}
+                      className={`cursor-pointer border-2 rounded-2xl p-3 text-center flex flex-col items-center justify-center gap-1.5 transition-all duration-300 ${
+                        isSelected
+                          ? "border-orange-500 bg-orange-500/10 text-orange-600 dark:text-orange-400"
+                          : "border-slate-200 dark:border-slate-700 bg-transparent text-slate-600 dark:text-slate-400 hover:border-orange-200 dark:hover:border-slate-600"
+                      }`}
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span className="text-[11px] font-bold tracking-tight">
+                        {roleOption.label}
+                      </span>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </motion.div>
 
             {/* Submit Button */}
             <motion.div

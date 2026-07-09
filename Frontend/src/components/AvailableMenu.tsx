@@ -1,6 +1,6 @@
 "use client";
 
-import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardFooter } from "./ui/card";
 import type { MenuItem } from "@/types/restaurantType";
@@ -11,7 +11,7 @@ import { motion } from "framer-motion";
 import { Badge } from "./ui/badge";
 
 const AvailableMenu = ({ menus }: { menus?: MenuItem[] }) => {
-  const navigate = useNavigate();
+
   const { addToCart } = useCartStore();
   const [visibleItems, setVisibleItems] = useState<Set<string>>(new Set());
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
@@ -152,7 +152,9 @@ const AvailableMenu = ({ menus }: { menus?: MenuItem[] }) => {
               <Button
                 onClick={() => {
                   addToCart(menu);
-                  navigate("/cart");
+                  toast.success(`${menu.name} added to cart!`, {
+                    description: "Continue browsing or go to cart to checkout.",
+                  });
                 }}
                 disabled={menu.availability === "Out of Stock"} // Disable button if unavailable
                 className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold py-2.5 sm:py-3 rounded-lg sm:rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-xl group/btn relative overflow-hidden text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"

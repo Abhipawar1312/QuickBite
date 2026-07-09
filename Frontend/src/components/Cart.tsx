@@ -15,6 +15,7 @@ import {
 import { useState } from "react";
 import CheckoutConfirmPage from "./CheckoutConfirmPage";
 import { useCartStore } from "@/store/useCartStore";
+import { useRestaurantStore } from "@/store/useRestaurantStore";
 import type { CartItem } from "@/types/cartType";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -27,6 +28,7 @@ const Cart = () => {
     clearCart,
     removeFromTheCart,
   } = useCartStore();
+  const { singleRestaurant } = useRestaurantStore();
 
   const totalAmount = cart.reduce(
     (acc, ele) => acc + ele.price * ele.quantity,
@@ -103,7 +105,7 @@ const Cart = () => {
           transition={{ delay: 0.8 }}
         >
           <Button className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-6 sm:px-8 py-2.5 sm:py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all duration-300 text-sm sm:text-base">
-            Start Shopping
+            Start Ordering Food
           </Button>
         </motion.div>
       </motion.div>
@@ -133,6 +135,16 @@ const Cart = () => {
       </motion.div>
 
       <div className="max-w-6xl mx-auto">
+        {singleRestaurant && singleRestaurant.isOpen === false && (
+          <div className="bg-red-50 dark:bg-red-950/20 border-l-4 border-red-500 p-4 mb-6 rounded-r-xl animate-pulse">
+            <div className="flex items-center gap-3">
+              <span className="text-red-500 font-bold">⚠️ Warning:</span>
+              <p className="text-sm text-red-700 dark:text-red-300 font-medium">
+                This restaurant is currently closed. Remove its items from cart to continue ordering from other restaurants.
+              </p>
+            </div>
+          </div>
+        )}
         {/* Mobile-Optimized Clear All Button */}
         <motion.div
           initial={{ opacity: 0, x: 20 }}
@@ -405,9 +417,10 @@ const Cart = () => {
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Button
               onClick={() => setOpen(true)}
-              className="w-full sm:w-auto bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full text-base sm:text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300 group"
+              disabled={singleRestaurant?.isOpen === false}
+              className="w-full sm:w-auto bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full text-base sm:text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300 group disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Proceed To Checkout
+              {singleRestaurant?.isOpen === false ? "Restaurant Closed" : "Proceed To Checkout"}
               <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
             </Button>
           </motion.div>
