@@ -29,7 +29,6 @@ export interface Orders extends CheckoutSessionRequest {
     cancellationReason?: string;
     rider?: any;
     riderStatus?: string;
-    restaurant?: any;
 }
 export type OrderState = {
     loading: boolean;

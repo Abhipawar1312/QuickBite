@@ -66,4 +66,12 @@ export type RestaurantState = {
     addLocalRestaurantOrder: (newOrder: any) => void;
     updateSingleRestaurantMenu: (data: { action: "add" | "edit" | "delete", menu?: MenuItem, menuId?: string }) => void;
     updateSingleRestaurantRatings: (averageRating: number, numReviews: number) => void;
+    toggleRestaurantStatus: () => Promise<void>;
+    getAllRestaurantsAdmin: () => Promise<Restaurant[]>;
+    verifyRestaurantAdmin: (restaurantId: string) => Promise<void>;
+    deleteRestaurantAdmin: (restaurantId: string) => Promise<void>;
+    updateLocalRestaurantOrder: (updatedOrder: any) => void;
+    addLocalRestaurantOrder: (newOrder: any) => void;
+    updateSingleRestaurantMenu: (data: { action: "add" | "edit" | "delete", menu?: MenuItem, menuId?: string }) => void;
+    updateSingleRestaurantRatings: (averageRating: number, numReviews: number) => void;
 }
