@@ -44,12 +44,14 @@ const Login = () => {
           callback: handleGoogleLoginResponse,
         });
 
+        const computedWidth = Math.max(250, Math.min(380, window.innerWidth - 96)).toString();
+
         (window as any).google.accounts.id.renderButton(
           document.getElementById("googleSignInButton"),
           {
             theme: theme === "dark" ? "filled_black" : "outline",
             size: "large",
-            width: "380",
+            width: computedWidth,
             text: "continue_with",
             shape: "rectangular",
           }
@@ -142,7 +144,7 @@ const Login = () => {
         transition={{ duration: 0.6 }}
         className="w-full max-w-md relative z-10"
       >
-        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border border-white/20 dark:border-slate-700/50 shadow-2xl rounded-3xl p-8">
+        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border border-white/20 dark:border-slate-700/50 shadow-2xl rounded-3xl p-6 sm:p-8">
           <form onSubmit={loginSubmitHandler} className="space-y-6">
             {/* Header */}
             <motion.div
