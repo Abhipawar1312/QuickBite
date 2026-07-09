@@ -233,6 +233,10 @@ export const useUserStore = create<UserState>()(
         {
             name: 'user-name',
             storage: createJSONStorage(() => localStorage),
+            partialize: (state) => ({
+                user: state.user,
+                isAuthenticated: state.isAuthenticated,
+            }),
         }
     )
 );

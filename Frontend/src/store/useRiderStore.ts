@@ -224,6 +224,14 @@ export const useRiderStore = create<RiderState>()(
     {
       name: "rider-store-key",
       storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        riderProfile: state.riderProfile,
+        ridersList: state.ridersList,
+        incomingOrders: state.incomingOrders,
+        activeOrder: state.activeOrder,
+        riderEarnings: state.riderEarnings,
+        riderDeliveries: state.riderDeliveries,
+      }),
     }
   )
 );

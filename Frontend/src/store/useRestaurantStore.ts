@@ -323,5 +323,12 @@ export const useRestaurantStore = create<RestaurantState>()(persist((set, get) =
 
 }), {
     name: 'restaurant-name',
-    storage: createJSONStorage(() => localStorage)
+    storage: createJSONStorage(() => localStorage),
+    partialize: (state) => ({
+        restaurant: state.restaurant,
+        searchedRestaurant: state.searchedRestaurant,
+        appliedFilter: state.appliedFilter,
+        singleRestaurant: state.singleRestaurant,
+        restaurantOrder: state.restaurantOrder,
+    }),
 }))

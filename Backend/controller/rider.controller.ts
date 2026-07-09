@@ -342,7 +342,7 @@ export const getRiderEarnings = async (req: Request, res: Response): Promise<voi
         const tripsTotal = deliveredOrders.length;
 
         deliveredOrders.forEach(order => {
-            const fee = order.deliveryFee || 0;
+            const fee = order.deliveryFee || 25;
             const created = new Date(order.createdAt);
             totalEarnings += fee;
 

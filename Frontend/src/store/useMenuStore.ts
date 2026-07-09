@@ -110,5 +110,8 @@ export const useMenuStore = create<MenuState>()(persist((set) => ({
 
 }), {
     name: "menu-name",
-    storage: createJSONStorage(() => localStorage)
+    storage: createJSONStorage(() => localStorage),
+    partialize: (state) => ({
+        menu: state.menu,
+    }),
 }))

@@ -67,5 +67,8 @@ export const useOrderStore = create<OrderState>()(persist((set => ({
     }
 })), {
     name: 'order-name',
-    storage: createJSONStorage(() => localStorage)
+    storage: createJSONStorage(() => localStorage),
+    partialize: (state) => ({
+        orders: state.orders,
+    }),
 }))
