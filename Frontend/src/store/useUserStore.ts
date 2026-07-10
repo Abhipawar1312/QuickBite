@@ -146,8 +146,8 @@ export const useUserStore = create<UserState>()(
                     set({ loading: true });
                     const response = await axios.post(`${API_END_POINT}/logout`);
                     if (response.data.success) {
-                        // Clear user data first
-                        set({ loading: false, user: null, isAuthenticated: false });
+                        // Reset theme first to ensure it updates before redirect
+                        useThemeStore.getState().setTheme("light");
 
                         // Clear restaurant and menu data from other stores
                         // Use dynamic imports to avoid circular dependencies
@@ -158,13 +158,14 @@ export const useUserStore = create<UserState>()(
                         useRestaurantStore.getState().clearRestaurantData();
                         useMenuStore.getState().clearMenuData();
 
-                        // Reset theme
-                        useThemeStore.getState().setTheme("light");
+                        // Clear user data and trigger redirect
+                        set({ loading: false, user: null, isAuthenticated: false });
 
                         toast.success(response.data.message);
                     }
                 } catch (error: any) {
-                    toast.error(error.response.data.message);
+                    const message = error.response?.data?.message || "Logout failed";
+                    toast.error(message);
                     set({ loading: false });
                 }
             },
