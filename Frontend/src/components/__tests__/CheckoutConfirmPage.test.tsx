@@ -4,18 +4,22 @@ import CheckoutConfirmPage from "../CheckoutConfirmPage";
 const mockCreateCheckoutSession = jest.fn();
 const mockSetOpen = jest.fn();
 
+const mockUser = {
+    fullname: "Abhi",
+    email: "abhi@test.com",
+    contact: "9999999999",
+    address: "Test Street",
+    city: "Mumbai",
+    country: "India",
+    pincode: "400070",
+};
+
 jest.mock("@/store/useUserStore", () => ({
     useUserStore: () => ({
-        user: {
-            fullname: "Abhi",
-            email: "abhi@test.com",
-            contact: "9999999999",
-            address: "Test Street",
-            city: "Mumbai",
-            country: "India",
-        },
+        user: mockUser,
     }),
 }));
+
 
 jest.mock("@/store/useCartStore", () => ({
     useCartStore: () => ({
@@ -28,6 +32,13 @@ jest.mock("@/store/useCartStore", () => ({
                 image: "test.jpg",
             },
         ],
+        tipAmount: 0,
+        couponCode: "",
+        discountAmount: 0,
+        deliveryInstructions: "",
+        scheduledDeliveryTime: "",
+        setDeliveryInstructions: jest.fn(),
+        setScheduledDeliveryTime: jest.fn(),
     }),
 }));
 
@@ -45,14 +56,28 @@ jest.mock("@/store/useOrderStore", () => ({
     }),
 }));
 
+jest.mock("../MapAddressPicker", () => ({
+    MapAddressPicker: () => null,
+}));
+
+jest.mock("../ui/dialog", () => ({
+    Dialog: ({ children, open }: any) => (open ? <div>{children}</div> : null),
+    DialogContent: ({ children }: any) => <div>{children}</div>,
+    DialogHeader: ({ children }: any) => <div>{children}</div>,
+    DialogTitle: ({ children }: any) => <h2>{children}</h2>,
+    DialogDescription: ({ children }: any) => <p>{children}</p>,
+    DialogFooter: ({ children }: any) => <div>{children}</div>,
+}));
+
 describe("CheckoutConfirmPage", () => {
+
     test("renders checkout dialog", () => {
         render(
             <CheckoutConfirmPage open={true} setOpen={mockSetOpen} />
         );
 
         expect(
-            screen.getByText(/review your order/i)
+            screen.getByText(/confirm delivery & checkout/i)
         ).toBeInTheDocument();
     });
 
@@ -66,9 +91,10 @@ describe("CheckoutConfirmPage", () => {
         });
 
         fireEvent.click(
-            screen.getByRole("button", { name: /continue to payment/i })
+            screen.getByRole("button", { name: /proceed to payment/i })
         );
 
         expect(mockCreateCheckoutSession).toHaveBeenCalled();
     });
 });
+

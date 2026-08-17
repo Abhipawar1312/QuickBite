@@ -17,7 +17,12 @@ export interface ChatMessage {
 export type ChatState = {
     loading: boolean;
     messages: ChatMessage[];
+    activeChatOrderId: string | null;
+    isChatOpen: boolean;
+    openChat: (orderId: string) => void;
+    closeChat: () => void;
     fetchMessages: (orderId: string) => Promise<void>;
     sendMessage: (orderId: string, text: string) => Promise<void>;
     addLocalMessage: (message: ChatMessage) => void;
 };
+

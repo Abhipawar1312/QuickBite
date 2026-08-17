@@ -4,10 +4,24 @@ import axios from "axios";
 import { LoginInputState, SignupInputState } from "@/schema/userSchema";
 import { toast } from "sonner";
 import { useThemeStore } from "./useThemeStore";
+import { API_END_POINTS } from "@/config/api";
 
-// const API_END_POINT = "http://localhost:8000/api/v1/user";
-const API_END_POINT = "https://quickbite-ogw0.onrender.com/api/v1/user"
+const API_END_POINT = API_END_POINTS.USER;
 axios.defaults.withCredentials = true;
+
+
+export type SavedAddress = {
+    _id?: string;
+    label?: string;
+    tag?: 'Home' | 'Work' | 'Other';
+    address: string;
+    city: string;
+    pincode?: string;
+    deliveryInstructions?: string;
+    latitude?: number;
+    longitude?: number;
+    isDefault?: boolean;
+};
 
 type User = {
     _id: string;
@@ -17,12 +31,15 @@ type User = {
     address: string;
     city: string;
     country: string;
+    pincode?: string;
     profilePicture: string;
     admin: boolean;
     role?: 'user' | 'restaurant_owner' | 'admin' | 'rider';
     isRoleSelected?: boolean;
+    savedAddresses?: SavedAddress[];
     isVerified: boolean;
 };
+
 
 type UserState = {
     user: User | null;
@@ -39,7 +56,12 @@ type UserState = {
     resetPassword: (token: string, newPassword: string) => Promise<void>;
     updateProfile: (input: any) => Promise<void>;
     selectRole: (role: string) => Promise<void>;
+    addSavedAddress: (addressData: Partial<SavedAddress>) => Promise<boolean>;
+    updateSavedAddress: (addressId: string, addressData: Partial<SavedAddress>) => Promise<boolean>;
+    deleteSavedAddress: (addressId: string) => Promise<boolean>;
 };
+
+
 
 export const useUserStore = create<UserState>()(
     persist(
@@ -146,23 +168,32 @@ export const useUserStore = create<UserState>()(
                     set({ loading: true });
                     const response = await axios.post(`${API_END_POINT}/logout`);
                     if (response.data.success) {
-                        // Reset theme first to ensure it updates before redirect
-                        useThemeStore.getState().setTheme("light");
-
-                        // Clear restaurant and menu data from other stores
-                        // Use dynamic imports to avoid circular dependencies
-                        const { useRestaurantStore } = await import("./useRestaurantStore");
-                        const { useMenuStore } = await import("./useMenuStore");
-
-                        // Clear all cached data
-                        useRestaurantStore.getState().clearRestaurantData();
-                        useMenuStore.getState().clearMenuData();
-
                         // Clear user data and trigger redirect
                         set({ loading: false, user: null, isAuthenticated: false });
 
+                        // Reset theme first to ensure it updates before redirect
+                        try {
+                            useThemeStore.getState().setTheme("light");
+                        } catch (e) {
+                            // ignore
+                        }
+
+                        // Clear restaurant, menu, and rider data from other stores safely
+                        try {
+                            const { useRestaurantStore } = await import("./useRestaurantStore");
+                            const { useMenuStore } = await import("./useMenuStore");
+                            const { useRiderStore } = await import("./useRiderStore");
+
+                            useRestaurantStore.getState().clearRestaurantData?.();
+                            useMenuStore.getState().clearMenuData?.();
+                            useRiderStore.setState?.({ riderProfile: null, activeOrder: null, incomingOrders: [] });
+                        } catch (e) {
+                            // ignore
+                        }
+
                         toast.success(response.data.message);
                     }
+
                 } catch (error: any) {
                     const message = error.response?.data?.message || "Logout failed";
                     toast.error(message);
@@ -230,7 +261,60 @@ export const useUserStore = create<UserState>()(
                     set({ loading: false });
                 }
             },
+
+            addSavedAddress: async (addressData: Partial<SavedAddress>) => {
+                try {
+                    set({ loading: true });
+                    const response = await axios.post(`${API_END_POINT}/saved-address`, addressData);
+                    set({ loading: false });
+                    if (response.data.success) {
+                        toast.success(response.data.message || "Address saved successfully");
+                        set({ user: response.data.user });
+                        return true;
+                    }
+                    return false;
+                } catch (error: any) {
+                    set({ loading: false });
+                    toast.error(error.response?.data?.message || "Failed to save address");
+                    return false;
+                }
+            },
+
+            updateSavedAddress: async (addressId: string, addressData: Partial<SavedAddress>) => {
+                try {
+                    set({ loading: true });
+                    const response = await axios.put(`${API_END_POINT}/saved-address/${addressId}`, addressData);
+                    set({ loading: false });
+                    if (response.data.success) {
+                        toast.success(response.data.message || "Address updated");
+                        set({ user: response.data.user });
+                        return true;
+                    }
+                    return false;
+                } catch (error: any) {
+                    set({ loading: false });
+                    toast.error(error.response?.data?.message || "Failed to update address");
+                    return false;
+                }
+            },
+
+            deleteSavedAddress: async (addressId: string) => {
+                try {
+                    const response = await axios.delete(`${API_END_POINT}/saved-address/${addressId}`);
+                    if (response.data.success) {
+                        toast.success(response.data.message || "Address removed");
+                        set({ user: response.data.user });
+                        return true;
+                    }
+                    return false;
+                } catch (error: any) {
+                    toast.error(error.response?.data?.message || "Failed to delete address");
+                    return false;
+                }
+            },
+
         }),
+
         {
             name: 'user-name',
             storage: createJSONStorage(() => localStorage),

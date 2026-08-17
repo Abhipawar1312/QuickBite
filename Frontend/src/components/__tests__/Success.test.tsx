@@ -113,8 +113,10 @@ describe("Success Component", () => {
         expect(screen.getByText("Order #123456")).toBeInTheDocument();
         expect(screen.getByText("Burgers")).toBeInTheDocument();
         expect(screen.getAllByText("500").length).toBe(2);
-        expect(screen.getByText("pending")).toBeInTheDocument();
+        expect(screen.getAllByText(/Payment Pending/i)[0]).toBeInTheDocument();
     });
+
+
 
     test("submits rating/review for delivered order", async () => {
         const mockOrder = {
@@ -164,4 +166,96 @@ describe("Success Component", () => {
             expect(mockMarkOrderAsReviewed).toHaveBeenCalledWith("order123456");
         });
     });
+
+    test("renders delivery instructions and rider tip breakdown for confirmed order", () => {
+        const mockOrder = {
+            _id: "order123456",
+            status: "confirmed",
+            totalAmount: 500,
+            tipAmount: 50,
+            deliveryInstructions: "Call customer on arrival at gate",
+            cartItems: [
+                {
+                    menuId: "menu1",
+                    name: "Burgers",
+                    price: 250,
+                    quantity: 2,
+                    image: "burger.jpg",
+                },
+            ],
+            restaurant: {
+                restaurantName: "Tasty Burgers",
+                location: { coordinates: [72.8777, 19.076] },
+            },
+            deliveryDetails: {
+                name: "Customer",
+                address: "Street 10",
+                city: "Mumbai",
+            },
+        };
+
+        (useOrderStore as unknown as jest.Mock).mockReturnValue({
+            orders: [mockOrder],
+            getOrderDetails: mockGetOrderDetails,
+            updateLocalOrderStatus: mockUpdateLocalOrderStatus,
+            markOrderAsReviewed: mockMarkOrderAsReviewed,
+        });
+
+        render(
+            <MemoryRouter>
+                <Success />
+            </MemoryRouter>
+        );
+
+        // Customer instructions banner
+        expect(screen.getByText(/Your Delivery Instructions/i)).toBeInTheDocument();
+        expect(screen.getByText(/Call customer on arrival at gate/i)).toBeInTheDocument();
+
+        // Rider tip badge in breakdown
+        expect(screen.getByText(/\+ ₹50 Rider Tip/i)).toBeInTheDocument();
+    });
+
+
+    test("renders Re-Order Items button for delivered order", () => {
+        const mockOrder = {
+            _id: "order123456",
+            status: "delivered",
+            totalAmount: 500,
+            cartItems: [
+                {
+                    menuId: "menu1",
+                    name: "Burgers",
+                    price: 250,
+                    quantity: 2,
+                    image: "burger.jpg",
+                },
+            ],
+            restaurant: {
+                restaurantName: "Tasty Burgers",
+            },
+            deliveryDetails: {
+                name: "Customer",
+                address: "Street 10",
+                city: "Mumbai",
+            },
+        };
+
+        (useOrderStore as unknown as jest.Mock).mockReturnValue({
+            orders: [mockOrder],
+            getOrderDetails: mockGetOrderDetails,
+            updateLocalOrderStatus: mockUpdateLocalOrderStatus,
+            markOrderAsReviewed: mockMarkOrderAsReviewed,
+        });
+
+        render(
+            <MemoryRouter>
+                <Success />
+            </MemoryRouter>
+        );
+
+        // Re-Order Items button
+        expect(screen.getByRole("button", { name: /re-order items/i })).toBeInTheDocument();
+    });
 });
+
+

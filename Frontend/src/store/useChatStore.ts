@@ -1,16 +1,28 @@
 import { ChatState, ChatMessage } from "@/types/chatType";
 import axios from "axios";
 import { create } from "zustand";
+import { API_END_POINTS } from "@/config/api";
 
-// const API_END_POINT = "http://localhost:8000/api/v1/chat";
-const API_END_POINT = "https://quickbite-ogw0.onrender.com/api/v1/chat";
+const API_END_POINT = API_END_POINTS.CHAT;
 axios.defaults.withCredentials = true;
+
 
 export const useChatStore = create<ChatState>((set) => ({
     loading: false,
     messages: [],
+    activeChatOrderId: null,
+    isChatOpen: false,
+
+    openChat: (orderId: string) => {
+        set({ activeChatOrderId: orderId, isChatOpen: true });
+    },
+
+    closeChat: () => {
+        set({ isChatOpen: false });
+    },
 
     fetchMessages: async (orderId: string) => {
+
         try {
             set({ loading: true });
             const response = await axios.get(`${API_END_POINT}/${orderId}`);

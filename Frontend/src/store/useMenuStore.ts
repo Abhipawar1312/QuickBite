@@ -3,10 +3,11 @@ import { toast } from "sonner";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { useRestaurantStore } from "./useRestaurantStore";
+import { API_END_POINTS } from "@/config/api";
 
-// const API_END_POINT = "http://localhost:8000/api/v1/menu";
-const API_END_POINT = "https://quickbite-ogw0.onrender.com/api/v1/menu";
+const API_END_POINT = API_END_POINTS.MENU;
 axios.defaults.withCredentials = true;
+
 
 type MenuState = {
     loading: boolean,

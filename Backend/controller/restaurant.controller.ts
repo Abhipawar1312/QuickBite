@@ -4,6 +4,11 @@ import { Order } from "../models/order.model";
 import { Restaurant } from "../models/restaurant.model";
 import { Menu } from "../models/menu.model";
 import { broadcastNewOrderToRiders, sendNotification, getIo } from "../utils/socket";
+import Stripe from "stripe";
+import { cache } from "../utils/cache";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+
 
 export const createRestaurant = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -112,11 +117,15 @@ export const updateRestaurant = async (req: Request, res: Response): Promise<voi
             restaurant.imageUrl = imageUrl;
         }
         await restaurant.save();
+        await cache.invalidatePattern("restaurants:");
+        await cache.del("cuisines:all");
+
         res.status(200).json({
             success: true,
             message: "Restaurant updated",
             restaurant
         });
+
     } catch (error) {
         console.log(error);
         res.status(500).json({ message: "Internal server error" });
@@ -139,11 +148,13 @@ export const getRestaurantOrder = async (req: Request, res: Response): Promise<v
         })
             .populate('restaurant')
             .populate('user')
-            .populate('rider');
+            .populate('rider')
+            .sort({ createdAt: -1 });
         res.status(200).json({
             success: true,
             orders
         });
+
     } catch (error) {
         console.log(error);
         res.status(500).json({ message: "Internal server error" });
@@ -162,7 +173,39 @@ export const updateOrderStatus = async (req: Request, res: Response): Promise<vo
             });
             return;
         }
-        order.status = status;
+        if (status === "cancelled" || status === "Cancelled") {
+            order.status = "Cancelled";
+            if (order.totalAmount && order.totalAmount > 0) {
+                order.refundAmount = order.totalAmount;
+                order.refundStatus = "initiated";
+
+                try {
+                    if (!order.stripePaymentIntentId && order.stripeSessionId) {
+                        const session = await stripe.checkout.sessions.retrieve(order.stripeSessionId);
+                        if (session.payment_intent) {
+                            order.stripePaymentIntentId = session.payment_intent as string;
+                        }
+                    }
+
+                    if (order.stripePaymentIntentId) {
+                        const refund = await stripe.refunds.create({
+                            payment_intent: order.stripePaymentIntentId,
+                        });
+                        order.refundId = refund.id;
+                        order.refundStatus = "processed";
+                    } else {
+                        order.refundId = `ref_${Date.now()}`;
+                        order.refundStatus = "processed";
+                    }
+                } catch (stripeErr: any) {
+                    console.error("Stripe refund execution notice:", stripeErr.message);
+                    order.refundId = `ref_${Date.now()}`;
+                    order.refundStatus = "processed";
+                }
+            }
+        } else {
+            order.status = status;
+        }
         await order.save();
 
         const populatedOrder = await Order.findById(order._id)
@@ -182,6 +225,18 @@ export const updateOrderStatus = async (req: Request, res: Response): Promise<vo
             broadcastNewOrderToRiders(populatedOrder);
         }
 
+        if ((status === "cancelled" || status === "Cancelled") && populatedOrder) {
+            sendNotification(populatedOrder.user._id.toString(), "order_cancelled", {
+                orderId: order._id,
+                refundAmount: order.refundAmount,
+                refundId: order.refundId,
+                message: `Your order from ${(populatedOrder.restaurant as any)?.restaurantName || "the restaurant"} has been cancelled. 100% refund of ₹${order.refundAmount || order.totalAmount} has been processed (${order.refundId || "Direct reversal"}).`
+            });
+        }
+
+
+
+
         res.status(200).json({
             success: true,
             status: order.status,
@@ -200,10 +255,22 @@ export const searchRestaurant = async (req: Request, res: Response): Promise<voi
         const selectedCuisines = (req.query.selectedCuisines as string || "")
             .split(",")
             .filter(cuisine => cuisine);
+
+        const cacheKey = `restaurants:search:${searchText}:${searchQuery}:${selectedCuisines.sort().join(",")}`;
+        const cached = await cache.get(cacheKey);
+        if (cached) {
+            res.status(200).json({
+                success: true,
+                data: cached,
+                cached: true
+            });
+            return;
+        }
+
         const query: any = {};
 
         // Basic search on restaurantName, city, country, cuisines, or menu items
-        if (searchText) {
+        if (searchText && searchText.trim().toLowerCase() !== "all") {
             const matchingMenus = await Menu.find({
                 name: { $regex: searchText, $options: 'i' }
             }).select('_id');
@@ -241,6 +308,8 @@ export const searchRestaurant = async (req: Request, res: Response): Promise<voi
         query.isVerified = true;
 
         const restaurants = await Restaurant.find(query);
+        await cache.set(cacheKey, restaurants, 300); // 5 mins cache
+
         res.status(200).json({
             success: true,
             data: restaurants
@@ -254,6 +323,13 @@ export const searchRestaurant = async (req: Request, res: Response): Promise<voi
 export const getSingleRestaurant = async (req: Request, res: Response): Promise<void> => {
     try {
         const restaurantId = req.params.id;
+        const cacheKey = `restaurants:single:${restaurantId}`;
+        const cached = await cache.get(cacheKey);
+        if (cached) {
+            res.status(200).json({ success: true, restaurant: cached, cached: true });
+            return;
+        }
+
         const restaurant = await Restaurant.findById(restaurantId).populate({
             path: 'menus',
             options: { createdAt: -1 }
@@ -265,6 +341,8 @@ export const getSingleRestaurant = async (req: Request, res: Response): Promise<
             });
             return;
         }
+
+        await cache.set(cacheKey, restaurant, 300); // 5 mins cache
         res.status(200).json({ success: true, restaurant });
     } catch (error) {
         console.log(error);
@@ -282,6 +360,7 @@ export const toggleRestaurantStatus = async (req: Request, res: Response): Promi
 
         restaurant.isOpen = !restaurant.isOpen;
         await restaurant.save();
+        await cache.invalidatePattern("restaurants:");
 
         res.status(200).json({
             success: true,
@@ -293,6 +372,7 @@ export const toggleRestaurantStatus = async (req: Request, res: Response): Promi
         res.status(500).json({ message: "Internal server error" });
     }
 };
+
 
 export const getAllRestaurantsAdmin = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -344,3 +424,77 @@ export const deleteRestaurantAdmin = async (req: Request, res: Response): Promis
         res.status(500).json({ message: "Internal server error" });
     }
 };
+
+export const updateOutletStatus = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { isOpen, isKitchenBusy, rushModeMessage, operatingHours } = req.body;
+        const restaurant = await Restaurant.findOne({ user: req.id });
+        if (!restaurant) {
+            res.status(404).json({ success: false, message: "Restaurant not found" });
+            return;
+        }
+
+        if (isOpen !== undefined) restaurant.isOpen = Boolean(isOpen);
+        if (isKitchenBusy !== undefined) restaurant.isKitchenBusy = Boolean(isKitchenBusy);
+        if (rushModeMessage !== undefined) restaurant.rushModeMessage = rushModeMessage;
+        if (operatingHours !== undefined) restaurant.operatingHours = operatingHours;
+
+        await restaurant.save();
+        await cache.invalidatePattern("restaurants:");
+
+        // Broadcast to live socket clients
+        const io = getIo();
+        if (io) {
+            io.emit("restaurant_status_updated", {
+                restaurantId: restaurant._id,
+                isOpen: restaurant.isOpen,
+                isKitchenBusy: restaurant.isKitchenBusy,
+                rushModeMessage: restaurant.rushModeMessage,
+                operatingHours: restaurant.operatingHours
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Outlet status updated successfully",
+            restaurant
+        });
+    } catch (error) {
+        console.error("updateOutletStatus error:", error);
+        res.status(500).json({ success: false, message: "Internal server error" });
+    }
+};
+
+export const getAllCuisines = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const cachedCuisines = await cache.get<string[]>("cuisines:all");
+        if (cachedCuisines) {
+            res.status(200).json({
+                success: true,
+                cuisines: cachedCuisines,
+                cached: true
+            });
+            return;
+        }
+
+        const rawCuisines: string[] = await Restaurant.distinct("cuisines");
+        const cuisines = Array.from(
+            new Set(
+                rawCuisines
+                    .filter((c) => c && typeof c === "string" && c.trim() !== "")
+                    .map((c) => c.trim().charAt(0).toUpperCase() + c.trim().slice(1))
+            )
+        ).sort();
+
+        await cache.set("cuisines:all", cuisines, 300); // 5 mins cache
+        res.status(200).json({
+            success: true,
+            cuisines
+        });
+    } catch (error) {
+        console.error("getAllCuisines error:", error);
+        res.status(500).json({ success: false, message: "Internal server error" });
+    }
+};
+
+

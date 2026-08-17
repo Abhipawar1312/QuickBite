@@ -24,6 +24,8 @@ import {
   Shield,
   Bike,
   Bell,
+  Heart,
+  TrendingUp,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import {
@@ -42,12 +44,34 @@ import { useCartStore } from "@/store/useCartStore";
 import { useNotificationStore } from "@/store/useNotificationStore";
 import { useRestaurantStore } from "@/store/useRestaurantStore";
 import { useOrderStore } from "@/store/useOrderStore";
+import { useChatStore } from "@/store/useChatStore";
 import { useEffect } from "react";
 import { io } from "socket.io-client";
+import { BASE_URL } from "@/config/api";
 import DarkMode from "./Darkmode";
 import Icon from "@/assets/Icon.png";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "./ui/badge";
+import { toast } from "sonner";
+
+const playNotificationSound = () => {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+    osc.frequency.setValueAtTime(880, ctx.currentTime + 0.1); // A5
+    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.35);
+  } catch (e) {
+    // AudioContext blocked or not supported
+  }
+};
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -56,6 +80,8 @@ const Navbar = () => {
   const { unreadCount, addNotification } = useNotificationStore();
   const { addLocalRestaurantOrder, updateLocalRestaurantOrder } = useRestaurantStore();
   const { updateLocalOrderStatus } = useOrderStore();
+  const { openChat } = useChatStore();
+
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -63,22 +89,32 @@ const Navbar = () => {
   useEffect(() => {
     if (!user) return;
 
-    const socket = io("http://localhost:8000", {
+    const socket = io(BASE_URL, {
       query: { userId: user._id, role: user.role }
     });
 
+
     // 1. New delivery available (Riders)
     socket.on("new_order_available", (order: any) => {
+      playNotificationSound();
       addNotification({
         title: "New Delivery Available!",
         message: `Order #${order._id.slice(-6)} is available from ${order.restaurant?.restaurantName || "restaurant"}.`,
         type: "new_order",
         link: "/rider/dashboard"
       });
+      toast.info("🏍️ New Delivery Available!", {
+        description: `Order #${order._id.slice(-6)} from ${order.restaurant?.restaurantName || "restaurant"}`,
+        action: {
+          label: "View Offer",
+          onClick: () => navigate("/rider/dashboard")
+        }
+      });
     });
 
     // 2. New confirmed order (Restaurant Owners) — also push to owner dashboard store
     socket.on("new_restaurant_order", (order: any) => {
+      playNotificationSound();
       addNotification({
         title: "New Order Confirmed!",
         message: `Order #${order._id.slice(-6)} confirmed by ${order.deliveryDetails?.name}.`,
@@ -91,6 +127,7 @@ const Navbar = () => {
 
     // 3. Rider accepted (Customers) — update order status in customer store
     socket.on("rider_accepted", (data: any) => {
+      playNotificationSound();
       addNotification({
         title: "Rider Assigned!",
         message: data.message || "A delivery partner has accepted your order.",
@@ -100,6 +137,7 @@ const Navbar = () => {
     });
 
     socket.on("rider_reached_restaurant", (data: any) => {
+      playNotificationSound();
       addNotification({
         title: "Food Picked Up!",
         message: data.message || "Your delivery partner picked up your food!",
@@ -109,6 +147,7 @@ const Navbar = () => {
     });
 
     socket.on("order_delivered_notification", (data: any) => {
+      playNotificationSound();
       addNotification({
         title: "Order Delivered!",
         message: data.message || "Your order has been delivered! Enjoy your meal!",
@@ -118,6 +157,7 @@ const Navbar = () => {
     });
 
     socket.on("order_cancelled", (data: any) => {
+      playNotificationSound();
       addNotification({
         title: "Order Cancelled",
         message: data.message || "Your order has been cancelled by the restaurant.",
@@ -142,6 +182,7 @@ const Navbar = () => {
 
     // 5. Rider profile verified by admin
     socket.on("rider_verified", (data: any) => {
+      playNotificationSound();
       addNotification({
         title: "🎉 Profile Verified!",
         message: data.message || "Your rider profile has been verified. You can now go online and accept deliveries!",
@@ -150,10 +191,35 @@ const Navbar = () => {
       });
     });
 
+    // 6. Direct Real-time Chat message notification (toast alert + chime sound without cluttering the notification bell history)
+    socket.on("chat_notification", (data: any) => {
+      playNotificationSound();
+      const senderTitle = data.senderName || (data.senderRole === "Rider" ? "Delivery Partner" : "Customer");
+
+      toast(`💬 ${senderTitle}`, {
+        description: data.text,
+        duration: 7000,
+        action: {
+          label: "View Chat",
+          onClick: () => {
+            if (data.orderId) {
+              openChat(data.orderId);
+            } else if (user.role === "rider") {
+              navigate("/rider/dashboard");
+            } else {
+              navigate("/order/status");
+            }
+          }
+        }
+      });
+    });
+
     return () => {
       socket.disconnect();
     };
-  }, [user, addNotification, addLocalRestaurantOrder, updateLocalOrderStatus, updateLocalRestaurantOrder]);
+  }, [user, addNotification, addLocalRestaurantOrder, updateLocalOrderStatus, updateLocalRestaurantOrder, openChat, navigate]);
+
+
 
   return (
     <motion.nav
@@ -201,8 +267,11 @@ const Navbar = () => {
                   {[
                     { to: "/", label: "Home", icon: Home },
                     { to: "/profile", label: "Profile", icon: UserCircle },
-                    // Orders only for regular customers (not owner, not rider)
-                    ...(!user?.admin ? [{ to: "/order/status", label: "Orders", icon: HandPlatter }] : []),
+                    // Regular customer links
+                    ...(!user?.admin ? [
+                      { to: "/order/status", label: "Orders", icon: HandPlatter },
+                      { to: "/favorites", label: "Wishlist", icon: Heart },
+                    ] : []),
                   ].map((link, index) => {
                     const Icon = link.icon;
                     return (
@@ -272,11 +341,18 @@ const Navbar = () => {
                             Orders
                           </MenubarItem>
                         </Link>
+                        <Link to="/admin/analytics">
+                          <MenubarItem className="hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:text-orange-600 dark:hover:text-orange-400 transition-colors duration-300 rounded-xl p-3 cursor-pointer">
+                            <TrendingUp className="w-4 h-4 mr-3" />
+                            Analytics
+                          </MenubarItem>
+                        </Link>
                       </MenubarContent>
                     </MenubarMenu>
                   </Menubar>
                 </motion.div>
               )}
+
 
               {/* Platform Admin verification dashboard */}
               {user?.role === "admin" && (
@@ -483,11 +559,12 @@ const MobileNavbar = () => {
   const mobileLinks = [
     // Always: Profile
     { to: "/profile", label: "Profile", icon: User },
-    // Regular users only: Home and Orders
+    // Regular users only: Home, Orders, Wishlist
     ...(user?.role !== "rider" && !user?.admin
       ? [
           { to: "/", label: "Home", icon: Home },
           { to: "/order/status", label: "My Orders", icon: HandPlatter },
+          { to: "/favorites", label: "Wishlist", icon: Heart },
         ]
       : []),
     // Admin (restaurant owner): Home only (orders accessed from Dashboard)
@@ -500,7 +577,9 @@ const MobileNavbar = () => {
     { to: "/admin/menu", label: "Menu", icon: SquareMenu },
     { to: "/admin/restaurant", label: "Restaurant", icon: UtensilsCrossed },
     { to: "/admin/orders", label: "Orders", icon: PackageCheck },
+    { to: "/admin/analytics", label: "Analytics", icon: TrendingUp },
   ];
+
 
   return (
     <Sheet>

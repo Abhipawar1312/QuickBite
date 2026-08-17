@@ -77,4 +77,18 @@ describe("useUserStore", () => {
     expect(useUserStore.getState().user).toEqual(mockUser);
     expect(toast.success).toHaveBeenCalledWith("Role selected");
   });
+
+  test("logout clears user state and resets auth", async () => {
+    useUserStore.setState({ user: { _id: "u1" } as any, isAuthenticated: true });
+    mockedAxios.post.mockResolvedValueOnce({
+      data: { success: true, message: "Logged out successfully" },
+    });
+
+    await useUserStore.getState().logout();
+
+    expect(useUserStore.getState().user).toBeNull();
+    expect(useUserStore.getState().isAuthenticated).toBe(false);
+    expect(toast.success).toHaveBeenCalledWith("Logged out successfully");
+  });
 });
+

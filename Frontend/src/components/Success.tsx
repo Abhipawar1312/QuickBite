@@ -1,18 +1,20 @@
 "use client";
 
-import { IndianRupee, CheckCircle, Package, Truck, Clock, Bike, Star, Loader2, MessageCircle } from "lucide-react";
+import { IndianRupee, CheckCircle, Package, Truck, Clock, Bike, Star, Loader2, MessageCircle, XCircle } from "lucide-react";
 import { Separator } from "./ui/separator";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
 import { useOrderStore } from "@/store/useOrderStore";
 import { useCartStore } from "@/store/useCartStore";
 import { useUserStore } from "@/store/useUserStore";
+import { useChatStore } from "@/store/useChatStore";
 import type { CartItem } from "@/types/cartType";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { LiveTrackingMap } from "./LiveTrackingMap";
-import { ChatPanel } from "./ChatPanel";
 import { io } from "socket.io-client";
+import { BASE_URL } from "@/config/api";
+
 import {
   Dialog,
   DialogContent,
@@ -56,7 +58,13 @@ const STATUS_STYLES: Record<string, { bg: string; text: string; icon: any }> = {
     text: "text-gray-800 dark:text-gray-300",
     icon: CheckCircle,
   },
+  cancelled: {
+    bg: "bg-red-100 dark:bg-red-950/40",
+    text: "text-red-700 dark:text-red-300",
+    icon: XCircle,
+  },
 };
+
 
 // Replace the existing variants with properly typed ones
 const containerVariants: Variants = {
@@ -89,6 +97,7 @@ const Success = () => {
   const { clearCart, setCart } = useCartStore();
   const { createReview, loading: reviewSubmitting } = useReviewStore();
   const { user } = useUserStore();
+  const { openChat, isChatOpen } = useChatStore();
   const navigate = useNavigate();
 
   const handleReorder = (order: any) => {
@@ -111,13 +120,13 @@ const Success = () => {
   const [hoverRating, setHoverRating] = useState<number>(0);
   const [comment, setComment] = useState("");
 
-  const [chatOpen, setChatOpen] = useState(false);
-  const [chatOrderId, setChatOrderId] = useState<string | null>(null);
+  const [unreadChatOrderIds, setUnreadChatOrderIds] = useState<string[]>([]);
 
   const handleOpenChat = (orderId: string) => {
-    setChatOrderId(orderId);
-    setChatOpen(true);
+    openChat(orderId);
+    setUnreadChatOrderIds((prev) => prev.filter((id) => id !== orderId));
   };
+
 
   const handleOpenReviewModal = (orderId: string) => {
     setSelectedOrderId(orderId);
@@ -154,7 +163,9 @@ const Success = () => {
   useEffect(() => {
     if (orders.length === 0) return;
 
-    const socket = io("http://localhost:8000");
+    const socket = io(BASE_URL, {
+      query: { userId: user?._id, role: user?.role }
+    });
 
     // Join order rooms
     orders.forEach((order) => {
@@ -167,10 +178,18 @@ const Success = () => {
       updateLocalOrderStatus(updatedOrder);
     });
 
+    socket.on("chat_notification", (data: any) => {
+      if (!isChatOpen) {
+        setUnreadChatOrderIds((prev) => [...new Set([...prev, data.orderId])]);
+      }
+    });
+
     return () => {
       socket.disconnect();
     };
-  }, [orders.length, updateLocalOrderStatus]);
+  }, [orders.length, updateLocalOrderStatus, user, isChatOpen]);
+
+
 
   if (orders.length === 0) {
     return (
@@ -250,8 +269,13 @@ const Success = () => {
           <AnimatePresence>
             {orders.map((order: any, orderIndex) => {
               const { status, cartItems, totalAmount } = order;
+              const normalizedStatus = (status || "").toLowerCase();
+              const isCancelled = normalizedStatus === "cancelled";
+              const isDelivered = normalizedStatus === "delivered";
+              const isPending = normalizedStatus === "pending";
+
               const statusConfig =
-                STATUS_STYLES[status] || STATUS_STYLES.pending;
+                STATUS_STYLES[normalizedStatus] || STATUS_STYLES.pending;
               const StatusIcon = statusConfig.icon;
 
               return (
@@ -259,18 +283,53 @@ const Success = () => {
                   key={order._id}
                   variants={orderVariants}
                   layout
-                  className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-3xl shadow-2xl hover:shadow-3xl transition-all duration-500 overflow-hidden group"
+                  className={`bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border rounded-3xl shadow-2xl hover:shadow-3xl transition-all duration-500 overflow-hidden group ${
+                    isCancelled
+                      ? "border-red-200 dark:border-red-900/50 opacity-95"
+                      : isPending
+                      ? "border-amber-300 dark:border-amber-800"
+                      : "border-slate-200 dark:border-slate-700"
+                  }`}
                 >
                   {/* Order Header */}
-                  <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-6 text-white relative overflow-hidden">
+                  <div
+                    className={`p-6 text-white relative overflow-hidden transition-all duration-300 ${
+                      isCancelled
+                        ? "bg-gradient-to-r from-slate-900 via-rose-950 to-slate-900"
+                        : isDelivered
+                        ? "bg-gradient-to-r from-slate-700 to-slate-800"
+                        : isPending
+                        ? "bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-700"
+                        : "bg-gradient-to-r from-orange-500 to-orange-600"
+                    }`}
+                  >
                     <div className="relative z-10">
                       <div className="flex items-center justify-between mb-4">
                         <div>
-                          <h3 className="text-xl font-bold">
-                            Order #{order._id.slice(-6)}
-                          </h3>
-                          <p className="text-orange-100">
-                            Placed on {new Date().toLocaleDateString()}
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-xl font-bold">
+                              Order #{order._id.slice(-6)}
+                            </h3>
+                            {isDelivered ? (
+                              <span className="text-[10px] uppercase font-bold tracking-wider bg-white/20 text-white px-2.5 py-0.5 rounded-full">
+                                Completed Order
+                              </span>
+                            ) : isCancelled ? (
+                              <span className="text-[10px] uppercase font-bold tracking-wider bg-red-600 text-white px-2.5 py-0.5 rounded-full shadow">
+                                ✕ Cancelled Order
+                              </span>
+                            ) : isPending ? (
+                              <span className="text-[10px] uppercase font-extrabold tracking-wider bg-amber-200 text-amber-950 px-2.5 py-0.5 rounded-full shadow">
+                                ⏳ Payment Pending
+                              </span>
+                            ) : (
+                              <span className="text-[10px] uppercase font-extrabold tracking-wider bg-amber-400 text-slate-950 px-2.5 py-0.5 rounded-full animate-pulse">
+                                ● Live Active Order
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-orange-100/90 text-xs mt-1">
+                            Placed on {order.createdAt ? new Date(order.createdAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "Recently"}
                           </p>
                         </div>
                         <motion.div
@@ -278,7 +337,7 @@ const Success = () => {
                           className={`flex items-center gap-2 px-4 py-2 rounded-full ${statusConfig.bg} ${statusConfig.text} font-semibold capitalize shadow-lg`}
                         >
                           <StatusIcon className="w-4 h-4" />
-                          {status.replace(/_/g, " ")}
+                          {isCancelled ? "Cancelled" : isPending ? "Payment Pending" : status.replace(/_/g, " ")}
                         </motion.div>
                       </div>
                     </div>
@@ -293,7 +352,7 @@ const Success = () => {
                   {/* Order Items */}
                   <div className="p-6">
                     <div className="space-y-4">
-                      {cartItems.map((item: CartItem, idx: number) => {
+                      {cartItems.map((item: any, idx: number) => {
                         const lineTotal = item.price * item.quantity;
                         return (
                           <motion.div
@@ -306,27 +365,32 @@ const Success = () => {
                             className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors duration-300 group/item"
                           >
                             <div className="flex items-center gap-4">
-                              <motion.div
-                                whileHover={{ scale: 1.1, rotate: 5 }}
-                                className="relative"
-                              >
-                                <img
-                                  src={item.image || "/placeholder.svg"}
-                                  alt={item.name}
-                                  className="w-16 h-16 rounded-xl object-cover shadow-lg"
-                                />
-                                <div className="absolute -top-2 -right-2 w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                                  {item.quantity}
-                                </div>
-                              </motion.div>
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="w-16 h-16 object-cover rounded-xl shadow-md group-hover/item:scale-105 transition-transform duration-300"
+                              />
                               <div>
-                                <h4 className="font-semibold text-slate-900 dark:text-white group-hover/item:text-orange-600 dark:group-hover/item:text-orange-400 transition-colors duration-300">
+                                <h4 className="font-semibold text-slate-900 dark:text-white">
                                   {item.name}
                                 </h4>
-                                <p className="text-sm text-slate-600 dark:text-slate-400">
+                                <p className="text-sm text-slate-500 dark:text-slate-400">
                                   Quantity: {item.quantity}
                                 </p>
+                                {item.selectedAddOns && item.selectedAddOns.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {item.selectedAddOns.map((addon: any, addIdx: number) => (
+                                      <span
+                                        key={addIdx}
+                                        className="text-[10px] bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 font-semibold px-2 py-0.5 rounded-md"
+                                      >
+                                        +{(addon.quantity && addon.quantity > 1) ? `${addon.quantity}x ` : ""}{addon.name} (₹{addon.price * (addon.quantity || 1)})
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
+
                             </div>
 
                             <div className="text-right">
@@ -347,24 +411,191 @@ const Success = () => {
                       })}
                     </div>
 
-                    <Separator className="my-6 bg-slate-200 dark:bg-slate-600" />
+                    {/* 4-Digit Delivery Verification PIN Banner - only for confirmed live active orders */}
+                    {order.deliveryPin && !isDelivered && !isCancelled && !isPending && (
+                      <div className="mb-4 mt-4 p-4 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 dark:from-amber-500/20 dark:to-orange-500/20 rounded-2xl border-2 border-dashed border-orange-400 dark:border-orange-500 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+                        <div className="flex items-center gap-3.5">
+                          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-400 text-white flex items-center justify-center font-bold text-xl shadow-md ring-2 ring-orange-200 dark:ring-orange-900">
+                            🔐
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-extrabold uppercase tracking-wider text-orange-600 dark:text-orange-400">
+                                Delivery Handover PIN
+                              </span>
+                              <span className="bg-orange-100 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                Required at Doorstep
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+                              Share this 4-digit PIN with your delivery partner upon arrival to verify & receive your food.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="bg-white dark:bg-slate-900 px-6 py-2.5 rounded-2xl border-2 border-orange-400 dark:border-orange-500 shadow-md flex items-center gap-1.5">
+                          <span className="text-2xl font-black tracking-[0.25em] text-orange-600 dark:text-orange-400 font-mono">
+                            {order.deliveryPin}
+                          </span>
+                        </div>
+                      </div>
+                    )}
 
-                    {/* Order Total */}
-                    <motion.div
-                      whileHover={{ scale: 1.02 }}
-                      className="flex justify-between items-center p-4 bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 rounded-2xl border border-orange-200 dark:border-orange-800"
+                    {/* Pending State Notice */}
+                    {isPending && (
+                      <div className="mb-4 mt-4 p-4 bg-amber-50/90 dark:bg-amber-950/30 rounded-2xl border-2 border-dashed border-amber-300 dark:border-amber-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold text-lg shrink-0 shadow">
+                            ⏳
+                          </div>
+                          <div>
+                            <span className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
+                              Payment Incomplete / Awaiting Checkout
+                            </span>
+                            <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                              You exited before completing payment on Stripe. The restaurant will only receive and prepare your food once payment succeeds.
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          onClick={() => handleReorder(order)}
+                          className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs rounded-xl px-4 py-2 shadow shrink-0"
+                        >
+                          🔄 Retry Checkout
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Cancelled State: 100% Refund & Cancellation Notice */}
+                    {isCancelled && (
+                      <div className="mb-4 mt-4 p-5 bg-gradient-to-br from-red-50 via-rose-50/60 to-emerald-50/20 dark:from-red-950/40 dark:via-rose-950/30 dark:to-slate-900 rounded-2xl border-2 border-dashed border-red-300 dark:border-red-800 space-y-3">
+                        <div className="flex items-center gap-3.5">
+                          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 text-white flex items-center justify-center font-bold text-2xl shadow-md ring-4 ring-red-100 dark:ring-red-950/60">
+                            💸
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-sm font-extrabold text-red-900 dark:text-red-200">
+                                {order.refundId || order.refundStatus === "processed"
+                                  ? "Order Cancelled & 100% Refunded"
+                                  : "Order Cancelled & Refund Initiated"}
+                              </h4>
+                              {order.refundId || order.refundStatus === "processed" ? (
+                                <span className="bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-emerald-300 dark:border-emerald-700 shadow-xs">
+                                  ✓ Refund Processed
+                                </span>
+                              ) : (
+                                <span className="bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                                  ⏳ Processing Refund
+                                </span>
+                              )}
+                            </div>
+
+                            <p className="text-xs text-red-700/80 dark:text-red-300/80 mt-0.5">
+                              {order.cancellationReason
+                                ? `Cancellation Reason: ${order.cancellationReason}`
+                                : "This order was cancelled by the restaurant. Your full payment has been refunded."}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="pt-2 border-t border-red-200/60 dark:border-red-900/40 flex flex-wrap items-center justify-between gap-2 text-xs text-red-800 dark:text-red-300 font-medium">
+                          <div className="flex items-center gap-2">
+                            <span>Refund Amount:</span>
+                            <span className="font-extrabold text-emerald-700 dark:text-emerald-400 text-sm">
+                              ₹{order.refundAmount || totalAmount}
+                            </span>
+                          </div>
+                          <span className="bg-white/90 dark:bg-slate-800 px-3 py-1 rounded-full text-[11px] font-semibold border border-slate-200 dark:border-slate-700 text-emerald-700 dark:text-emerald-400 shadow-xs flex items-center gap-1">
+                            💳 Credited back to original payment method
+                          </span>
+                        </div>
+
+                      </div>
+                    )}
+
+                    {/* Delivery Instructions / Customer Note */}
+                    {order.deliveryInstructions && (
+                      <div className="flex items-start gap-2.5 p-3.5 bg-amber-50/90 dark:bg-amber-950/40 rounded-2xl border border-amber-200 dark:border-amber-800/60 text-xs text-amber-900 dark:text-amber-200 font-medium">
+                        <span className="text-base">📝</span>
+                        <div>
+                          <span className="font-bold block uppercase tracking-wider text-[10px] text-amber-700 dark:text-amber-400">
+                            Your Delivery Instructions
+                          </span>
+                          <p className="mt-0.5 text-slate-800 dark:text-slate-200 font-semibold">{order.deliveryInstructions}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Order Total & Fee Breakdown */}
+                    <div
+                      className={`space-y-2 p-4 rounded-2xl border ${
+                        isCancelled
+                          ? "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700"
+                          : isPending
+                          ? "bg-amber-50/60 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"
+                          : "bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 border-orange-200 dark:border-orange-800"
+                      }`}
                     >
-                      <p className="text-xl font-bold text-slate-900 dark:text-white">
-                        Order Total
-                      </p>
-                      <p className="flex items-center text-2xl font-bold text-orange-600 dark:text-orange-400">
-                        <IndianRupee className="w-6 h-6 mr-1" />
-                        {totalAmount}
-                      </p>
-                    </motion.div>
+
+                      <div className="flex justify-between items-center text-xs text-slate-600 dark:text-slate-400">
+                        <span>Distance: {order.distanceKM || 2.5} km • Delivery Fee: ₹{order.deliveryFee || 25}</span>
+                        {order.tipAmount > 0 && (
+                          <span className="text-orange-600 font-semibold">+ ₹{order.tipAmount} Rider Tip</span>
+                        )}
+                      </div>
+                      {order.couponCode && (
+                        <div className="flex justify-between items-center text-xs text-green-600 dark:text-green-400 font-semibold">
+                          <span>Coupon Applied: {order.couponCode}</span>
+                          <span>- ₹{order.discountAmount || 0}</span>
+                        </div>
+                      )}
+                      <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                        {isCancelled ? (
+                          <>
+                            <div>
+                              <p className="text-xs text-slate-400 line-through">
+                                Original Paid: ₹{totalAmount}
+                              </p>
+                              <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                                ✓ 100% Refunded (₹{order.refundAmount || totalAmount})
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                                Net Charge
+                              </span>
+                              <p className="text-2xl font-black text-slate-500 dark:text-slate-400">
+                                ₹0
+                              </p>
+                            </div>
+                          </>
+                        ) : isPending ? (
+                          <>
+                            <p className="text-lg font-bold text-slate-900 dark:text-white">
+                              Total Payable (Unpaid)
+                            </p>
+                            <p className="flex items-center text-2xl font-bold text-amber-600 dark:text-amber-400">
+                              <IndianRupee className="w-6 h-6 mr-1" />
+                              {totalAmount}
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-lg font-bold text-slate-900 dark:text-white">
+                              Total Paid
+                            </p>
+                            <p className="flex items-center text-2xl font-bold text-orange-600 dark:text-orange-400">
+                              <IndianRupee className="w-6 h-6 mr-1" />
+                              {totalAmount}
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
 
                     {/* Rider Details & Chat Button */}
-                    {order.rider && (status === "confirmed" || status === "preparing" || status === "ready_for_riders" || status === "outfordelivery") && (
+                    {order.rider && !isCancelled && !isPending && (status === "confirmed" || status === "preparing" || status === "ready_for_riders" || status === "outfordelivery") && (
                       <div className="mt-4 flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-100 dark:border-slate-700">
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-950/40 flex items-center justify-center font-bold text-orange-600">
@@ -377,16 +608,25 @@ const Success = () => {
                         </div>
                         <Button
                           onClick={() => handleOpenChat(order._id)}
-                          className="bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl px-4 py-2 text-xs flex items-center gap-1.5 shadow"
+                          className={`font-bold rounded-xl px-4 py-2 text-xs flex items-center gap-1.5 shadow transition-all ${
+                            unreadChatOrderIds.includes(order._id)
+                              ? "bg-amber-500 hover:bg-amber-400 text-slate-950 animate-bounce ring-2 ring-orange-400"
+                              : "bg-orange-500 hover:bg-orange-600 text-white"
+                          }`}
                         >
-                          <MessageCircle className="w-4 h-4 fill-white text-white" />
+                          <MessageCircle className="w-4 h-4 fill-current text-current" />
                           Chat with Rider
+                          {unreadChatOrderIds.includes(order._id) && (
+                            <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-extrabold animate-pulse">
+                              NEW
+                            </span>
+                          )}
                         </Button>
                       </div>
                     )}
 
                     {/* Live Tracking Map Widget */}
-                    {(status === "confirmed" || status === "preparing" || status === "ready_for_riders" || status === "outfordelivery") && (
+                    {!isCancelled && !isPending && (status === "confirmed" || status === "preparing" || status === "ready_for_riders" || status === "outfordelivery") && (
                       <div className="mt-6">
                         <LiveTrackingMap
                           orderId={order._id}
@@ -405,29 +645,52 @@ const Success = () => {
                       </div>
                     )}
 
-                    {/* Write a Review Button */}
-                    {status === "delivered" && (
-                      <div className="mt-6 flex justify-end items-center gap-3">
+                    {/* Delivered State: Re-Order and Review Buttons */}
+                    {isDelivered && (
+                      <div className="mt-6 flex flex-wrap justify-between items-center gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+                        <Button
+                          onClick={() => handleReorder(order)}
+                          variant="outline"
+                          className="border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/30 rounded-xl font-bold text-xs"
+                        >
+                          🔄 Re-Order Items
+                        </Button>
+
                         {order.isReviewed ? (
-                          <span className="text-sm font-semibold text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-4 py-2 rounded-full flex items-center gap-1.5 animate-pulse">
-                            <CheckCircle className="w-4 h-4" />
-                            Reviewed. Thank you!
+                          <span className="text-xs font-semibold text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-3.5 py-1.5 rounded-full flex items-center gap-1.5">
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            Reviewed
                           </span>
                         ) : (
-                          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                            <Button
-                              onClick={() => handleOpenReviewModal(order._id)}
-                              className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold rounded-xl px-6 py-3 shadow-lg hover:shadow-xl transition-all duration-300"
-                            >
-                              <Star className="w-5 h-5 mr-2 fill-yellow-300 text-yellow-300 animate-pulse" />
-                              Rate & Review Order
-                            </Button>
-                          </motion.div>
+                          <Button
+                            onClick={() => handleOpenReviewModal(order._id)}
+                            className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold rounded-xl px-5 py-2 text-xs shadow-md"
+                          >
+                            <Star className="w-4 h-4 mr-1.5 fill-yellow-300 text-yellow-300" />
+                            Rate & Review Order
+                          </Button>
                         )}
                       </div>
                     )}
-                  </div>
 
+                    {/* Cancelled State: Re-Order and Explore Buttons */}
+                    {isCancelled && (
+                      <div className="mt-6 flex flex-wrap justify-between items-center gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+                        <Button
+                          onClick={() => handleReorder(order)}
+                          variant="outline"
+                          className="border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/30 rounded-xl font-bold text-xs"
+                        >
+                          🔄 Re-Order Items
+                        </Button>
+                        <Link to="/">
+                          <Button className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl font-semibold text-xs px-5 py-2 shadow">
+                            Browse Other Restaurants
+                          </Button>
+                        </Link>
+                      </div>
+                    )}
+                  </div>
                 </motion.div>
               );
             })}
@@ -562,17 +825,9 @@ const Success = () => {
           </form>
         </DialogContent>
       </Dialog>
-
-      {chatOrderId && (
-        <ChatPanel
-          orderId={chatOrderId}
-          open={chatOpen}
-          onOpenChange={setChatOpen}
-          currentUserId={user?._id || ""}
-        />
-      )}
     </motion.div>
   );
 };
+
 
 export default Success;

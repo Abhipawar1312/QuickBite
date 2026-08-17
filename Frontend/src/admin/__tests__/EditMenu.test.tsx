@@ -73,7 +73,7 @@ describe("EditMenu Component", () => {
     it("toggles availability switch", async () => {
         setup();
 
-        const switchBtn = screen.getByRole("switch");
+        const switchBtn = screen.getAllByRole("switch")[0];
         expect(switchBtn).toHaveAttribute("aria-checked", "true");
 
         await userEvent.click(switchBtn);
@@ -82,6 +82,7 @@ describe("EditMenu Component", () => {
             expect(switchBtn).toHaveAttribute("aria-checked", "false");
         });
     });
+
 
     it("calls editMenu when form is valid", async () => {
         const { setEditOpen } = setup();

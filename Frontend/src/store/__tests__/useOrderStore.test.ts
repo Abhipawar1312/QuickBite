@@ -60,13 +60,24 @@ describe("useOrderStore", () => {
     expect(useOrderStore.getState().orders[0].status).toBe("Out for Delivery");
   });
 
-  test("markOrderAsReviewed sets isReviewed flag", () => {
-    useOrderStore.setState({
-      orders: [{ _id: "ord1", isReviewed: false } as any],
+  test("createCheckoutSession calls toast.error on failure (e.g. rush mode / kitchen busy)", async () => {
+    mockedAxios.post.mockRejectedValueOnce({
+      response: {
+        data: {
+          success: false,
+          message: "Experiencing high demand. Orders temporarily paused.",
+        },
+      },
     });
 
-    useOrderStore.getState().markOrderAsReviewed("ord1");
+    await useOrderStore.getState().createCheckoutSession({
+      cartItems: [],
+      deliveryDetails: { name: "", email: "", contact: "", address: "", city: "", country: "", pincode: "" },
+      restaurantId: "rest1",
+    });
 
-    expect(useOrderStore.getState().orders[0].isReviewed).toBe(true);
+    expect(toast.error).toHaveBeenCalledWith("Experiencing high demand. Orders temporarily paused.");
+    expect(useOrderStore.getState().loading).toBe(false);
   });
 });
+

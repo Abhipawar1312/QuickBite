@@ -10,7 +10,9 @@ import {
     toggleRestaurantStatus,
     getAllRestaurantsAdmin,
     verifyRestaurantAdmin,
-    deleteRestaurantAdmin
+    deleteRestaurantAdmin,
+    getAllCuisines,
+    updateOutletStatus
 } from "../controller/restaurant.controller";
 import { isAuthenticated } from "../middlewares/isAuthenticated";
 import { isAdmin, isRestaurantOwner } from "../middlewares/role.middleware";
@@ -24,7 +26,10 @@ router.route("/").put(isAuthenticated, upload.single("imageFile"), updateRestaur
 router.route("/order").get(isAuthenticated, getRestaurantOrder);
 router.route("/order/:orderId/status").put(isAuthenticated, updateOrderStatus);
 router.route("/search/:searchText").get(isAuthenticated, searchRestaurant);
+router.route("/cuisines").get(isAuthenticated, getAllCuisines);
 router.route("/status").put(isAuthenticated, isRestaurantOwner, toggleRestaurantStatus);
+router.route("/outlet-status").put(isAuthenticated, isRestaurantOwner, updateOutletStatus);
+
 
 // Admin dashboard routes
 router.route("/admin/all").get(isAuthenticated, isAdmin, getAllRestaurantsAdmin);
@@ -32,6 +37,7 @@ router.route("/admin/:id/verify").put(isAuthenticated, isAdmin, verifyRestaurant
 router.route("/admin/:id").delete(isAuthenticated, isAdmin, deleteRestaurantAdmin);
 
 router.route("/:id").get(isAuthenticated, getSingleRestaurant);
+
 
 export default router;
 

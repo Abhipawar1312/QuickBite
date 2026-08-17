@@ -10,12 +10,20 @@ export interface IDeliveryDetails {
     longitude?: number;
 }
 
+export interface IAddOnItem {
+    name: string;
+    price: number;
+    quantity?: number;
+}
+
+
 export interface ICartItem {
     menuId: mongoose.Types.ObjectId;
     name: string;
     image: string;
     price: number;
     quantity: number;
+    selectedAddOns?: IAddOnItem[];
 }
 
 export interface IOrder extends Document {
@@ -24,11 +32,22 @@ export interface IOrder extends Document {
     deliveryDetails: IDeliveryDetails;
     cartItems: ICartItem[];
     totalAmount?: number;
-    status: "pending" | "confirmed" | "preparing" | "ready_for_riders" | "outfordelivery" | "delivered" | "Cancelled";
+    status: "pending" | "confirmed" | "preparing" | "ready_for_riders" | "outfordelivery" | "delivered" | "Cancelled" | "cancelled";
     deliveryFee: number;
     platformFee: number;
     distanceKM: number;
+    tipAmount: number;
+    discountAmount: number;
+    couponCode?: string;
+    deliveryInstructions?: string;
+    scheduledDeliveryTime?: string;
+    deliveryPin?: string;
     cancellationReason?: string;
+    refundStatus?: "initiated" | "processed" | "not_applicable";
+    refundAmount?: number;
+    refundId?: string;
+    stripeSessionId?: string;
+    stripePaymentIntentId?: string;
     rider?: mongoose.Types.ObjectId;
     riderStatus?: 'pending' | 'accepted' | 'reached_restaurant' | 'delivered';
     isReviewed?: boolean;
@@ -46,12 +65,20 @@ const DeliveryDetailsSchema = new Schema<IDeliveryDetails>({
     longitude: { type: Number, required: false },
 });
 
+const AddOnItemSchema = new Schema<IAddOnItem>({
+    name: { type: String, required: true },
+    price: { type: Number, required: true, default: 0 },
+    quantity: { type: Number, default: 1 }
+}, { _id: false });
+
+
 const CartItemSchema = new Schema<ICartItem>({
     menuId: { type: Schema.Types.ObjectId, ref: "Menu", required: true },
     name: { type: String, required: true },
     image: { type: String, required: true },
     price: { type: Number, required: true },
     quantity: { type: Number, required: true },
+    selectedAddOns: { type: [AddOnItemSchema], default: [] }
 });
 
 const OrderSchema = new Schema<IOrder>(
@@ -63,13 +90,29 @@ const OrderSchema = new Schema<IOrder>(
         totalAmount: { type: Number },
         status: {
             type: String,
-            enum: ["pending", "confirmed", "preparing", "ready_for_riders", "outfordelivery", "delivered", "Cancelled"],
+            enum: ["pending", "confirmed", "preparing", "ready_for_riders", "outfordelivery", "delivered", "Cancelled", "cancelled"],
             default: "pending",
         },
+
         deliveryFee: { type: Number, default: 0 },
         platformFee: { type: Number, default: 0 },
         distanceKM: { type: Number, default: 0 },
+        tipAmount: { type: Number, default: 0 },
+        discountAmount: { type: Number, default: 0 },
+        couponCode: { type: String, default: "" },
+        deliveryInstructions: { type: String, default: "" },
+        scheduledDeliveryTime: { type: String, default: "" },
+        deliveryPin: { type: String, default: "" },
         cancellationReason: { type: String, default: "" },
+        refundStatus: {
+            type: String,
+            enum: ["initiated", "processed", "not_applicable"],
+            default: "not_applicable"
+        },
+        refundAmount: { type: Number, default: 0 },
+        refundId: { type: String, default: "" },
+        stripeSessionId: { type: String, default: "" },
+        stripePaymentIntentId: { type: String, default: "" },
         rider: { type: Schema.Types.ObjectId, ref: "User", default: null },
         riderStatus: {
             type: String,
@@ -84,4 +127,7 @@ const OrderSchema = new Schema<IOrder>(
     { timestamps: true }
 );
 
+
+
 export const Order: Model<IOrder> = mongoose.model<IOrder>("Order", OrderSchema);
+

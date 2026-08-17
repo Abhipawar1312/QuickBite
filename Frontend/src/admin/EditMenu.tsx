@@ -54,7 +54,12 @@ const EditMenu = ({
     price: 0,
     image: undefined,
     availability: "Available",
+    isVeg: true,
+    category: "Main Course",
+    addOns: [],
   });
+  const [addOnName, setAddOnName] = useState("");
+  const [addOnPrice, setAddOnPrice] = useState("");
   const [error, setError] = useState<Partial<MenuFormSchema>>({});
   const { loading, editMenu } = useMenuStore();
 
@@ -70,11 +75,24 @@ const EditMenu = ({
     });
   };
 
+  const handleAddAddOn = () => {
+    if (!addOnName.trim() || !addOnPrice.trim()) return;
+    const priceNum = Number(addOnPrice);
+    if (isNaN(priceNum) || priceNum < 0) return;
+    const updated = [...(input.addOns || []), { name: addOnName.trim(), price: priceNum }];
+    setInput({ ...input, addOns: updated });
+    setAddOnName("");
+    setAddOnPrice("");
+  };
+
+  const handleRemoveAddOn = (index: number) => {
+    const updated = (input.addOns || []).filter((_, i) => i !== index);
+    setInput({ ...input, addOns: updated });
+  };
+
   const submitHandler = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // Clear previous errors
     setError({});
-    // Validate basic menu schema (excluding availability for now)
     const basicInput = {
       name: input.name,
       description: input.description,
@@ -93,24 +111,17 @@ const EditMenu = ({
       formData.append("description", input.description);
       formData.append("price", input.price.toString());
       formData.append("availability", input.availability);
+      formData.append("isVeg", (input.isVeg !== false).toString());
+      formData.append("category", input.category || "Main Course");
+      formData.append("addOns", JSON.stringify(input.addOns || []));
       if (input.image) {
         formData.append("image", input.image);
       }
-      // Wait for the edit operation to complete
       await editMenu(selectedMenu._id, formData);
-      // Close dialog and reset form on success
       setEditOpen(false);
-      setInput({
-        name: "",
-        description: "",
-        price: 0,
-        image: undefined,
-        availability: "Available",
-      });
       setError({});
     } catch (error) {
       console.log(error);
-      // You might want to show an error message to the user here
     }
   };
 
@@ -122,8 +133,10 @@ const EditMenu = ({
         price: selectedMenu?.price || 0,
         image: undefined,
         availability: selectedMenu?.availability || "Available",
+        isVeg: selectedMenu?.isVeg !== false,
+        category: selectedMenu?.category || "Main Course",
+        addOns: selectedMenu?.addOns || [],
       });
-      // Clear errors when opening dialog
       setError({});
     }
   }, [selectedMenu, editOpen]);
@@ -158,7 +171,7 @@ const EditMenu = ({
                 value={input.name}
                 onChange={changeEventHandler}
                 placeholder="Enter menu name"
-                className="h-12 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 transition-all duration-300"
+                className="h-12 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-blue-500 transition-all duration-300"
               />
               {error.name && (
                 <motion.span
@@ -180,7 +193,7 @@ const EditMenu = ({
                 value={input.description}
                 onChange={changeEventHandler}
                 placeholder="Enter menu description"
-                className="h-12 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 transition-all duration-300"
+                className="h-12 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-blue-500 transition-all duration-300"
               />
               {error.description && (
                 <motion.span
@@ -192,29 +205,113 @@ const EditMenu = ({
                 </motion.span>
               )}
             </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                <IndianRupee className="w-4 h-4" />
-                Price (₹)
-              </Label>
-              <Input
-                type="number"
-                name="price"
-                value={input.price}
-                onChange={changeEventHandler}
-                placeholder="Enter menu price"
-                className="h-12 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 transition-all duration-300"
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                  <IndianRupee className="w-4 h-4" />
+                  Price (₹)
+                </Label>
+                <Input
+                  type="number"
+                  name="price"
+                  value={input.price}
+                  onChange={changeEventHandler}
+                  placeholder="Enter menu price"
+                  className="h-12 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-blue-500 transition-all duration-300"
+                />
+
+                {error.price && (
+                  <motion.span
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-xs font-medium text-red-600"
+                  >
+                    {error.price}
+                  </motion.span>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  Category
+                </Label>
+                <Input
+                  type="text"
+                  name="category"
+                  value={input.category || ""}
+                  onChange={changeEventHandler}
+                  placeholder="e.g. Starters, Main Course"
+                  className="h-12 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-blue-500 transition-all duration-300"
+                />
+              </div>
+            </div>
+
+            {/* Dietary Type (Veg / Non-Veg) */}
+            <div className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-2">
+                <span className={`w-3 h-3 rounded-full ${input.isVeg !== false ? "bg-green-500" : "bg-red-500"}`} />
+                <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                  {input.isVeg !== false ? "Pure Veg 🟢" : "Non-Veg 🔴"}
+                </span>
+              </div>
+              <Switch
+                checked={input.isVeg !== false}
+                onCheckedChange={(val) => setInput({ ...input, isVeg: val })}
+                className="data-[state=checked]:bg-green-500"
               />
-              {error.price && (
-                <motion.span
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-xs font-medium text-red-600"
+            </div>
+
+            {/* Custom Modifiers / Add-ons Builder */}
+            <div className="space-y-2.5 p-3.5 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-200 dark:border-slate-700">
+              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block">
+                Customizable Add-ons & Modifiers (Optional)
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  placeholder="Add-on Name (e.g. Extra Cheese)"
+                  value={addOnName}
+                  onChange={(e) => setAddOnName(e.target.value)}
+                  className="text-xs h-9 rounded-lg"
+                />
+                <Input
+                  type="number"
+                  placeholder="Price (₹)"
+                  value={addOnPrice}
+                  onChange={(e) => setAddOnPrice(e.target.value)}
+                  className="text-xs h-9 w-24 rounded-lg"
+                />
+                <Button
+                  type="button"
+                  onClick={handleAddAddOn}
+                  className="bg-blue-500 hover:bg-blue-600 text-white font-bold h-9 text-xs px-3 rounded-lg"
                 >
-                  {error.price}
-                </motion.span>
+                  Add
+                </Button>
+              </div>
+
+              {input.addOns && input.addOns.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {input.addOns.map((a, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center gap-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-1 rounded-lg font-medium text-slate-800 dark:text-slate-200"
+                    >
+                      {a.name} (+₹{a.price})
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAddOn(i)}
+                        className="text-red-500 hover:text-red-700 font-bold ml-1"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
               )}
             </div>
+
             {/* Availability Toggle */}
             <div className="space-y-3">
               <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">

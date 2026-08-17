@@ -16,9 +16,21 @@ const mockAddToCart = jest.fn();
 
 jest.mock("@/store/useCartStore", () => ({
     useCartStore: () => ({
+        cart: [],
+        restaurantId: undefined,
         addToCart: mockAddToCart,
     }),
 }));
+
+const mockToggleFavoriteMenu = jest.fn();
+jest.mock("@/store/useFavoritesStore", () => ({
+    useFavoritesStore: () => ({
+        isMenuFavorite: () => false,
+        toggleFavoriteMenu: mockToggleFavoriteMenu,
+    }),
+}));
+
+
 
 const mockMenus: MenuItem[] = [
     {
@@ -75,8 +87,9 @@ describe("AvailableMenu Component", () => {
 
         fireEvent.click(addButton);
 
-        expect(mockAddToCart).toHaveBeenCalledWith(mockMenus[0]);
+        expect(mockAddToCart).toHaveBeenCalledWith(mockMenus[0], undefined, undefined, []);
         expect(mockNavigate).not.toHaveBeenCalled();
+
     });
 
     test("disables Add to Cart button when item is out of stock", () => {

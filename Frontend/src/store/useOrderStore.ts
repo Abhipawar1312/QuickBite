@@ -3,10 +3,11 @@ import axios from "axios";
 import { toast } from "sonner";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { API_END_POINTS } from "@/config/api";
 
-// const API_END_POINT: string = "http://localhost:8000/api/v1/order";
-const API_END_POINT: string = "https://quickbite-ogw0.onrender.com/api/v1/order";
+const API_END_POINT: string = API_END_POINTS.ORDER;
 axios.defaults.withCredentials = true;
+
 
 export const useOrderStore = create<OrderState>()(persist((set => ({
     loading: false,
@@ -21,10 +22,13 @@ export const useOrderStore = create<OrderState>()(persist((set => ({
             });
             window.location.href = response.data.session.url;
             set({ loading: false });
-        } catch (error) {
+        } catch (error: any) {
+            const errorMsg = error.response?.data?.message || "Failed to create checkout session";
+            toast.error(errorMsg);
             set({ loading: false });
         }
     },
+
     getOrderDetails: async (confirmSuccess?: boolean) => {
         try {
             set({ loading: true });

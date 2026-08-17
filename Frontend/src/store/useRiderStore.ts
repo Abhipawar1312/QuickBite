@@ -3,10 +3,11 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import axios from "axios";
 import { toast } from "sonner";
 import { Orders } from "@/types/orderType";
+import { API_END_POINTS } from "@/config/api";
 
-// const API_END_POINT = "http://localhost:8000/api/v1/rider";
-const API_END_POINT = "https://quickbite-ogw0.onrender.com/api/v1/rider";
+const API_END_POINT = API_END_POINTS.RIDER;
 axios.defaults.withCredentials = true;
+
 
 export interface RiderProfile {
   _id: string;
@@ -32,7 +33,7 @@ export type RiderState = {
   getRiderProfile: () => Promise<void>;
   toggleOnlineStatus: (isOnline: boolean, latitude: number, longitude: number) => Promise<void>;
   acceptOrder: (orderId: string) => Promise<void>;
-  updateDeliveryWorkflow: (orderId: string, status: "reached_restaurant" | "delivered") => Promise<void>;
+  updateDeliveryWorkflow: (orderId: string, status: "reached_restaurant" | "delivered", deliveryPin?: string) => Promise<boolean>;
   getAllRidersAdmin: () => Promise<void>;
   verifyRiderAdmin: (riderId: string) => Promise<void>;
   deleteRiderAdmin: (riderId: string) => Promise<void>;
@@ -40,7 +41,17 @@ export type RiderState = {
   addIncomingOrder: (order: Orders) => void;
   removeIncomingOrder: (orderId: string) => void;
   setActiveOrder: (order: Orders | null) => void;
-  riderEarnings: { today: number; week: number; total: number; tripsToday: number; tripsWeek: number; tripsTotal: number } | null;
+  riderEarnings: {
+    today: number;
+    week: number;
+    total: number;
+    todayTips?: number;
+    weekTips?: number;
+    totalTips?: number;
+    tripsToday: number;
+    tripsWeek: number;
+    tripsTotal: number;
+  } | null;
   riderDeliveries: any[];
   getRiderEarnings: () => Promise<void>;
 };
@@ -144,20 +155,29 @@ export const useRiderStore = create<RiderState>()(
         }
       },
 
-      updateDeliveryWorkflow: async (orderId, status) => {
+      updateDeliveryWorkflow: async (orderId, status, deliveryPin) => {
         try {
           set({ loading: true });
-          const response = await axios.put(`${API_END_POINT}/order/${orderId}/workflow`, { status });
+          const response = await axios.put(`${API_END_POINT}/order/${orderId}/workflow`, {
+            status,
+            deliveryPin,
+          });
           if (response.data.success) {
             toast.success(response.data.message);
             set({
               activeOrder: status === "delivered" ? null : response.data.order,
               loading: false,
             });
+            if (status === "delivered") {
+              get().getRiderEarnings();
+            }
+            return true;
           }
+          return false;
         } catch (error: any) {
           toast.error(error.response?.data?.message || "Failed to update workflow");
           set({ loading: false });
+          return false;
         }
       },
 

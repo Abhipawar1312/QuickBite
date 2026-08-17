@@ -12,6 +12,8 @@ dist
 coverage
 dist-ssr
 *.local
+SYSTEM_DESIGN.md
+.env.example
 
 # Editor directories and files
 .vscode/*

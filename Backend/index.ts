@@ -11,6 +11,10 @@ import orderRoute from "./routes/order.route";
 import riderRoute from "./routes/rider.route";
 import reviewRoute from "./routes/review.route";
 import chatRoute from "./routes/chat.route";
+import couponRoute from "./routes/coupon.route";
+import analyticsRoute from "./routes/analytics.route";
+import recommendationRoute from "./routes/recommendation.route";
+import { generalApiLimiter } from "./middlewares/rateLimiter";
 import path from "path";
 import http from "http";
 import { initializeSocket } from "./utils/socket";
@@ -31,6 +35,8 @@ const corsOptions = {
     credentials: true
 }
 app.use(cors(corsOptions));
+app.use("/api/v1", generalApiLimiter);
+
 //api's
 app.use("/api/v1/user", userRoute);
 app.use("/api/v1/restaurant", restaurantRoute);
@@ -39,6 +45,11 @@ app.use("/api/v1/order", orderRoute);
 app.use("/api/v1/rider", riderRoute);
 app.use("/api/v1/review", reviewRoute);
 app.use("/api/v1/chat", chatRoute);
+app.use("/api/v1/coupon", couponRoute);
+app.use("/api/v1/analytics", analyticsRoute);
+app.use("/api/v1/recommendation", recommendationRoute);
+
+
 
 app.use(express.static(path.join(DIRNAME, "/Frontend/dist")));
 

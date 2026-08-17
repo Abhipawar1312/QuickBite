@@ -43,6 +43,25 @@ jest.mock('react-router-dom', () => ({
    useParams: () => ({}),
 }));
 
+jest.mock('@/config/api', () => ({
+   BASE_URL: "http://localhost:8000",
+   API_BASE_URL: "http://localhost:8000/api/v1",
+   API_END_POINTS: {
+      USER: "http://localhost:8000/api/v1/user",
+      RESTAURANT: "http://localhost:8000/api/v1/restaurant",
+      MENU: "http://localhost:8000/api/v1/menu",
+      ORDER: "http://localhost:8000/api/v1/order",
+      RIDER: "http://localhost:8000/api/v1/rider",
+      REVIEW: "http://localhost:8000/api/v1/review",
+      CHAT: "http://localhost:8000/api/v1/chat",
+      COUPON: "http://localhost:8000/api/v1/coupon",
+      ANALYTICS: "http://localhost:8000/api/v1/analytics",
+      RECOMMENDATION: "http://localhost:8000/api/v1/recommendation",
+   },
+}));
+
+
+
 /* ============================
    MOCK TOAST
 ============================ */

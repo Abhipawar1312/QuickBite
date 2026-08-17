@@ -103,4 +103,15 @@ describe("useRestaurantStore", () => {
     await useRestaurantStore.getState().getRestaurantOrders();
     expect(useRestaurantStore.getState().restaurantOrder).toEqual(mockOrders);
   });
+
+  test("fetchAllCuisines fetches global cuisines list successfully", async () => {
+    const mockCuisines = ["Biryani", "Burger", "Chinese", "Momos"];
+    mockedAxios.get.mockResolvedValueOnce({
+      data: { success: true, cuisines: mockCuisines },
+    });
+
+    await useRestaurantStore.getState().fetchAllCuisines();
+    expect(useRestaurantStore.getState().allCuisines).toEqual(mockCuisines);
+  });
 });
+

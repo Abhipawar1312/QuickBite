@@ -1,12 +1,15 @@
-"use client";
-
-import { Timer, MapPin, Sparkles, Star } from "lucide-react";
+import { Timer, MapPin, Sparkles, Star, Heart, AlertTriangle, Clock } from "lucide-react";
 import { Badge } from "./ui/badge";
 import AvailableMenu from "./AvailableMenu";
+import { SmartRecommendations } from "./SmartRecommendations";
 import { useRestaurantStore } from "@/store/useRestaurantStore";
+import { useFavoritesStore } from "@/store/useFavoritesStore";
+import { isRestaurantCurrentlyOpen, formatTimeTo12Hr } from "@/lib/operatingHours";
 import { useEffect, useState } from "react";
+
 import { useParams } from "react-router-dom";
 import { io } from "socket.io-client";
+import { BASE_URL } from "@/config/api";
 import { useReviewStore } from "@/store/useReviewStore";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { motion, AnimatePresence } from "framer-motion";
@@ -15,7 +18,12 @@ const RestaurantDetail = () => {
   const params = useParams();
   const { singleRestaurant, getSingleRestaurant, updateSingleRestaurantMenu, updateSingleRestaurantRatings } = useRestaurantStore();
   const { reviews, getRestaurantReviews, addLocalReview } = useReviewStore();
+  const { toggleFavoriteRestaurant, isRestaurantFavorite } = useFavoritesStore();
   const [isLoaded, setIsLoaded] = useState(false);
+
+  const openStatus = isRestaurantCurrentlyOpen(singleRestaurant || undefined);
+
+
 
   useEffect(() => {
     getSingleRestaurant(params.id!);
@@ -26,7 +34,16 @@ const RestaurantDetail = () => {
   useEffect(() => {
     if (!params.id) return;
 
-    const socket = io("http://localhost:8000");
+    const socket = io(BASE_URL);
+
+
+    socket.on("restaurant_status_updated", (data: any) => {
+      console.log("Restaurant status updated via socket:", data);
+      if (data.restaurantId === params.id) {
+        getSingleRestaurant(params.id!);
+      }
+
+    });
 
     socket.on("restaurant_menu_changed", (data: any) => {
       console.log("Restaurant menu changed in real-time via socket:", data);
@@ -48,7 +65,8 @@ const RestaurantDetail = () => {
     return () => {
       socket.disconnect();
     };
-  }, [params.id, updateSingleRestaurantMenu, addLocalReview, updateSingleRestaurantRatings]);
+  }, [params.id, getSingleRestaurant, updateSingleRestaurantMenu, addLocalReview, updateSingleRestaurantRatings]);
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
@@ -122,6 +140,20 @@ const RestaurantDetail = () => {
                       {singleRestaurant?.city}
                     </span>
                   </div>
+
+                  {singleRestaurant && (
+                    <button
+                      onClick={() => toggleFavoriteRestaurant(singleRestaurant)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold backdrop-blur-md transition-all shadow-md ${
+                        isRestaurantFavorite(singleRestaurant._id)
+                          ? "bg-rose-500 text-white"
+                          : "bg-white/20 text-white hover:bg-rose-500"
+                      }`}
+                    >
+                      <Heart className="w-4 h-4 fill-current" />
+                      {isRestaurantFavorite(singleRestaurant._id) ? "Saved in Wishlist" : "Add to Wishlist"}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -139,7 +171,34 @@ const RestaurantDetail = () => {
 
       {/* Mobile-Optimized Main Content */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 md:py-12">
+        {/* Outlet Status Warnings (Closed / Rush Mode) */}
+        {!openStatus.isOpen && (
+          <div className="mb-6 p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border-2 border-red-200 dark:border-red-900 text-red-800 dark:text-red-300 flex items-center gap-3 shadow-md">
+            <AlertTriangle className="w-6 h-6 text-red-500 shrink-0" />
+            <div>
+              <h4 className="font-extrabold text-sm">Outlet Currently Closed</h4>
+              <p className="text-xs mt-0.5">
+                {openStatus.reason || "This restaurant is currently closed and not accepting orders. You can browse the menu, but checkout is disabled."}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {openStatus.isOpen && singleRestaurant?.isKitchenBusy && (
+          <div className="mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-200 dark:border-amber-900 text-amber-900 dark:text-amber-300 flex items-center gap-3 shadow-md">
+            <AlertTriangle className="w-6 h-6 text-amber-500 shrink-0 animate-pulse" />
+            <div>
+              <h4 className="font-extrabold text-sm">Kitchen Rush Mode (Orders Temporarily Paused)</h4>
+              <p className="text-xs mt-0.5">
+                {singleRestaurant.rushModeMessage || "The kitchen is experiencing very high order volume. New orders are temporarily paused — please try placing your order in 15–30 minutes."}
+              </p>
+            </div>
+          </div>
+        )}
+
+
         {/* Mobile-Optimized Restaurant Info Card */}
+
         <div
           className={`bg-white dark:bg-slate-800 rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6 md:p-8 mb-8 sm:mb-10 md:mb-12 border border-slate-200 dark:border-slate-700 transition-all duration-1000 delay-700 hover:shadow-2xl hover:-translate-y-1 sm:hover:-translate-y-2 ${
             isLoaded ? "translate-y-0 opacity-100" : "translate-y-20 opacity-0"
@@ -197,22 +256,43 @@ const RestaurantDetail = () => {
                 Service Info
               </h3>
 
-              {/* Mobile-Optimized Delivery Time */}
-              <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 sm:p-6 border border-slate-200 dark:border-slate-600 hover:border-orange-300 dark:hover:border-orange-600 transition-all duration-300 hover:shadow-lg group">
-                <div className="flex items-center gap-3">
-                  <div className="bg-orange-100 dark:bg-orange-900/30 p-2 sm:p-3 rounded-full group-hover:scale-110 transition-transform duration-300 group-hover:rotate-12">
-                    <Timer className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600 dark:text-orange-400 group-hover:animate-spin" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Mobile-Optimized Delivery Time */}
+                <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 sm:p-5 border border-slate-200 dark:border-slate-600 hover:border-orange-300 dark:hover:border-orange-600 transition-all duration-300 hover:shadow-lg group">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-orange-100 dark:bg-orange-900/30 p-2 sm:p-2.5 rounded-full group-hover:scale-110 transition-transform duration-300 group-hover:rotate-12">
+                      <Timer className="w-5 h-5 text-orange-600 dark:text-orange-400 group-hover:animate-spin" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 group-hover:text-orange-600 transition-colors duration-300">
+                        Delivery Time
+                      </p>
+                      <p className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white group-hover:scale-105 transition-transform duration-300">
+                        {singleRestaurant?.deliveryTime || "N/A"}
+                        <span className="text-xs sm:text-sm font-normal text-slate-600 dark:text-slate-400 ml-1">
+                          mins
+                        </span>
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 group-hover:text-orange-600 transition-colors duration-300">
-                      Delivery Time
-                    </p>
-                    <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white group-hover:scale-105 transition-transform duration-300">
-                      {singleRestaurant?.deliveryTime || "N/A"}
-                      <span className="text-base sm:text-lg font-normal text-slate-600 dark:text-slate-400 ml-1">
-                        mins
-                      </span>
-                    </p>
+                </div>
+
+                {/* Operating Hours */}
+                <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 sm:p-5 border border-slate-200 dark:border-slate-600 hover:border-orange-300 dark:hover:border-orange-600 transition-all duration-300 hover:shadow-lg group">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-orange-100 dark:bg-orange-900/30 p-2 sm:p-2.5 rounded-full group-hover:scale-110 transition-transform duration-300">
+                      <Clock className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 group-hover:text-orange-600 transition-colors duration-300">
+                        Operating Hours
+                      </p>
+                      <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                        {singleRestaurant?.operatingHours?.openTime && singleRestaurant?.operatingHours?.closeTime
+                          ? `${formatTimeTo12Hr(singleRestaurant.operatingHours.openTime)} – ${formatTimeTo12Hr(singleRestaurant.operatingHours.closeTime)}`
+                          : "24 Hours"}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -220,14 +300,33 @@ const RestaurantDetail = () => {
           </div>
         </div>
 
+        {/* Smart Recommendations: Frequently Paired in this Restaurant */}
+        {params.id && (
+          <SmartRecommendations
+            variant="paired"
+            restaurantId={params.id}
+            title="🔥 Chef Recommends & Popular Pairings"
+          />
+        )}
+
         {/* Mobile-Optimized Available Menu Section */}
         <div
           className={`transition-all duration-1000 delay-1300 mb-10 ${
             isLoaded ? "opacity-100" : "opacity-0"
           }`}
         >
-          <AvailableMenu menus={singleRestaurant?.menus} />
+          <AvailableMenu
+            menus={singleRestaurant?.menus}
+            restaurantId={singleRestaurant?._id}
+            restaurantName={singleRestaurant?.restaurantName}
+            isOutletOpen={openStatus.isOpen}
+            isKitchenBusy={singleRestaurant?.isKitchenBusy}
+            closedReason={openStatus.reason}
+          />
         </div>
+
+
+
 
         {/* Customer Reviews Section */}
         <div

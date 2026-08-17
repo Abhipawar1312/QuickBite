@@ -3,10 +3,11 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { API_END_POINTS } from '@/config/api';
 
-// const API_END_POINT = "http://localhost:8000/api/v1/restaurant";
-const API_END_POINT = "https://quickbite-ogw0.onrender.com/api/v1/restaurant";
+const API_END_POINT = API_END_POINTS.RESTAURANT;
 axios.defaults.withCredentials = true;
+
 
 export const useRestaurantStore = create<RestaurantState>()(persist((set, get) => ({
     loading: false,
@@ -15,6 +16,7 @@ export const useRestaurantStore = create<RestaurantState>()(persist((set, get) =
     appliedFilter: [],
     singleRestaurant: null,
     restaurantOrder: [],
+    allCuisines: [],
 
     // Add method to clear all data
     clearRestaurantData: () => {
@@ -25,8 +27,10 @@ export const useRestaurantStore = create<RestaurantState>()(persist((set, get) =
             appliedFilter: [],
             singleRestaurant: null,
             restaurantOrder: [],
+            allCuisines: [],
         });
     },
+
 
     createRestaurant: async (formData: FormData) => {
         try {
@@ -319,9 +323,33 @@ export const useRestaurantStore = create<RestaurantState>()(persist((set, get) =
             toast.error(error.response?.data?.message || 'Failed to delete restaurant');
             set({ loading: false });
         }
+    },
+    fetchAllCuisines: async () => {
+        try {
+            const response = await axios.get(`${API_END_POINT}/cuisines`);
+            if (response.data.success) {
+                set({ allCuisines: response.data.cuisines || [] });
+            }
+        } catch (error) {
+            console.error("fetchAllCuisines error:", error);
+        }
+    },
+    updateOutletStatus: async (statusData: { isOpen?: boolean; isKitchenBusy?: boolean; rushModeMessage?: string; operatingHours?: { openTime: string; closeTime: string } }) => {
+        try {
+            set({ loading: true });
+            const response = await axios.put(`${API_END_POINT}/outlet-status`, statusData);
+            if (response.data.success) {
+                toast.success(response.data.message || "Outlet status updated");
+                set({ restaurant: response.data.restaurant, loading: false });
+            }
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || "Failed to update outlet status");
+            set({ loading: false });
+        }
     }
 
 }), {
+
     name: 'restaurant-name',
     storage: createJSONStorage(() => localStorage),
     partialize: (state) => ({
@@ -331,4 +359,4 @@ export const useRestaurantStore = create<RestaurantState>()(persist((set, get) =
         singleRestaurant: state.singleRestaurant,
         restaurantOrder: state.restaurantOrder,
     }),
-}))
+}))

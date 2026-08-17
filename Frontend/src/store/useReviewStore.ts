@@ -2,10 +2,11 @@ import { ReviewState, Review } from "@/types/reviewType";
 import axios from "axios";
 import { toast } from "sonner";
 import { create } from "zustand";
+import { API_END_POINTS } from "@/config/api";
 
-// const API_END_POINT = "http://localhost:8000/api/v1/review";
-const API_END_POINT = "https://quickbite-ogw0.onrender.com/api/v1/review";
+const API_END_POINT = API_END_POINTS.REVIEW;
 axios.defaults.withCredentials = true;
+
 
 export const useReviewStore = create<ReviewState>((set) => ({
     loading: false,

@@ -4,10 +4,12 @@ import { Menu } from "../models/menu.model";
 import { Restaurant } from "../models/restaurant.model";
 import mongoose from "mongoose";
 import { getIo } from "../utils/socket";
+import { cache } from "../utils/cache";
+
 
 export const addMenu = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { name, description, price } = req.body;
+        const { name, description, price, isVeg, category, addOns } = req.body;
         const file = req.file;
 
         if (!file) {
@@ -19,12 +21,25 @@ export const addMenu = async (req: Request, res: Response): Promise<void> => {
         }
 
         const imageUrl = await uploadImageOnCloudinary(file as Express.Multer.File);
+        
+        let parsedAddOns = [];
+        if (addOns) {
+            try {
+                parsedAddOns = typeof addOns === "string" ? JSON.parse(addOns) : addOns;
+            } catch (e) {
+                parsedAddOns = [];
+            }
+        }
+
         const menu = await Menu.create({
             name,
             description,
-            price,
+            price: Number(price),
             image: imageUrl,
-            availability: 'Available' // Default to available
+            availability: 'Available',
+            isVeg: isVeg === "false" || isVeg === false ? false : true,
+            category: category || "Main Course",
+            addOns: parsedAddOns
         });
 
         const restaurant = await Restaurant.findOne({ user: req.id });
@@ -32,6 +47,7 @@ export const addMenu = async (req: Request, res: Response): Promise<void> => {
             // Ensure menus is an array of ObjectIds before pushing
             (restaurant.menus as mongoose.Types.ObjectId[]).push(menu._id as mongoose.Types.ObjectId);
             await restaurant.save();
+            await cache.invalidatePattern("restaurants:");
 
             // Emit real-time menu change
             const io = getIo();
@@ -40,6 +56,8 @@ export const addMenu = async (req: Request, res: Response): Promise<void> => {
                 menu,
                 action: "add"
             });
+        } else {
+            await cache.invalidatePattern("restaurants:");
         }
 
         res.status(201).json({
@@ -56,7 +74,7 @@ export const addMenu = async (req: Request, res: Response): Promise<void> => {
 export const editMenu = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
-        const { name, description, price, availability } = req.body;
+        const { name, description, price, availability, isVeg, category, addOns } = req.body;
         const file = req.file;
 
         const menu = await Menu.findById(id);
@@ -70,8 +88,17 @@ export const editMenu = async (req: Request, res: Response): Promise<void> => {
 
         if (name) menu.name = name;
         if (description) menu.description = description;
-        if (price) menu.price = price;
+        if (price !== undefined) menu.price = Number(price);
         if (availability) menu.availability = availability;
+        if (isVeg !== undefined) menu.isVeg = isVeg === "false" || isVeg === false ? false : true;
+        if (category) menu.category = category;
+        if (addOns !== undefined) {
+            try {
+                menu.addOns = typeof addOns === "string" ? JSON.parse(addOns) : addOns;
+            } catch (e) {
+                // ignore
+            }
+        }
 
         if (file) {
             const imageUrl = await uploadImageOnCloudinary(file as Express.Multer.File);
@@ -79,6 +106,7 @@ export const editMenu = async (req: Request, res: Response): Promise<void> => {
         }
 
         await menu.save();
+        await cache.invalidatePattern("restaurants:");
 
         const restaurant = await Restaurant.findOne({ menus: { $in: [menu._id] } });
         if (restaurant) {
@@ -131,6 +159,7 @@ export const deleteMenu = async (req: Request, res: Response): Promise<void> => 
 
         // Delete the menu
         await Menu.findByIdAndDelete(id);
+        await cache.invalidatePattern("restaurants:");
 
         res.status(200).json({
             success: true,
@@ -181,6 +210,8 @@ export const toggleMenuAvailability = async (req: Request, res: Response): Promi
 
         menu.availability = availability;
         await menu.save();
+        await cache.invalidatePattern("restaurants:");
+
 
         const io = getIo();
         io.emit("restaurant_menu_changed", {

@@ -38,11 +38,14 @@ const Login = () => {
 
     if (typeof window !== "undefined" && (window as any).google) {
       try {
-        const googleClientId = process.env.VITE_GOOGLE_CLIENT_ID || "1028789312563-mockclientid.apps.googleusercontent.com";
+        const googleClientId = process.env.VITE_GOOGLE_CLIENT_ID;
         (window as any).google.accounts.id.initialize({
           client_id: googleClientId,
           callback: handleGoogleLoginResponse,
         });
+
+
+
 
         const computedWidth = Math.max(250, Math.min(380, window.innerWidth - 96)).toString();
 

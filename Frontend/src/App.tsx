@@ -28,6 +28,9 @@ const Success = lazy(() => import("./components/Success"));
 const AdminDashboard = lazy(() => import("./admin/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
 const RiderDashboard = lazy(() => import("./components/RiderDashboard").then(m => ({ default: m.RiderDashboard })));
 const NotificationsPage = lazy(() => import("./components/NotificationsPage"));
+const FavoritesPage = lazy(() => import("./components/FavoritesPage"));
+const MerchantAnalytics = lazy(() => import("./admin/MerchantAnalytics").then(m => ({ default: m.MerchantAnalytics })));
+
 
 // Route guards (no change)
 const ProtectedRoutes = ({ children }: { children: React.ReactNode }) => {
@@ -89,6 +92,7 @@ const appRouter = createBrowserRouter([
       { path: "/cart", element: <Cart /> },
       { path: "/order/status", element: <Success /> },
       { path: "/notifications", element: <NotificationsPage /> },
+      { path: "/favorites", element: <FavoritesPage /> },
       {
         path: "/admin/restaurant",
         element: (
@@ -113,6 +117,15 @@ const appRouter = createBrowserRouter([
           </AdminRoute>
         ),
       },
+      {
+        path: "/admin/analytics",
+        element: (
+          <AdminRoute>
+            <MerchantAnalytics />
+          </AdminRoute>
+        ),
+      },
+
       {
         path: "/admin/dashboard",
         element: (

@@ -203,6 +203,18 @@ export const updateDeliveryWorkflow = async (req: Request, res: Response): Promi
                 message: "Your delivery partner has picked up your food and is out for delivery!"
             });
         } else if (status === "delivered") {
+            // Verify 4-digit Delivery PIN if order has one
+            const { deliveryPin } = req.body;
+            if (order.deliveryPin && order.deliveryPin.trim() !== "") {
+                if (!deliveryPin || deliveryPin.toString().trim() !== order.deliveryPin.trim()) {
+                    res.status(400).json({
+                        success: false,
+                        message: "Invalid Delivery PIN! Please ask the customer for the 4-digit verification code displayed on their screen."
+                    });
+                    return;
+                }
+            }
+
             order.riderStatus = "delivered";
             order.status = "delivered";
             await order.save();
@@ -337,21 +349,30 @@ export const getRiderEarnings = async (req: Request, res: Response): Promise<voi
         let todayEarnings = 0;
         let weekEarnings = 0;
         let totalEarnings = 0;
+        let todayTips = 0;
+        let weekTips = 0;
+        let totalTips = 0;
         let tripsToday = 0;
         let tripsWeek = 0;
         const tripsTotal = deliveredOrders.length;
 
         deliveredOrders.forEach(order => {
-            const fee = order.deliveryFee || 25;
+            const baseFee = order.deliveryFee || 25;
+            const tip = order.tipAmount || 0;
+            const fee = baseFee + tip;
             const created = new Date(order.createdAt);
+            
             totalEarnings += fee;
+            totalTips += tip;
 
             if (created >= startOfToday) {
                 todayEarnings += fee;
+                todayTips += tip;
                 tripsToday++;
             }
             if (created >= startOfWeek) {
                 weekEarnings += fee;
+                weekTips += tip;
                 tripsWeek++;
             }
         });
@@ -362,6 +383,9 @@ export const getRiderEarnings = async (req: Request, res: Response): Promise<voi
                 today: todayEarnings,
                 week: weekEarnings,
                 total: totalEarnings,
+                todayTips,
+                weekTips,
+                totalTips,
                 tripsToday,
                 tripsWeek,
                 tripsTotal

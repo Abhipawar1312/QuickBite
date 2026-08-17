@@ -1,5 +1,12 @@
 import { Orders } from "./orderType";
 
+export type MenuAddOn = {
+    name: string;
+    price: number;
+    quantity?: number;
+};
+
+
 export type MenuItem = {
     _id: string;
     name: string;
@@ -7,9 +14,20 @@ export type MenuItem = {
     price: number;
     image: string;
     availability: 'Available' | 'Out of Stock';
+    isVeg?: boolean;
+    category?: string;
+    addOns?: MenuAddOn[];
+    restaurant?: {
+        _id: string;
+        restaurantName: string;
+        city?: string;
+        imageUrl?: string;
+    };
     createdAt?: Date;
     updatedAt?: Date;
 }
+
+
 
 export type Restaurant = {
     _id: string;
@@ -23,6 +41,12 @@ export type Restaurant = {
     imageUrl: string;
     contactNumber?: string;
     isOpen?: boolean;
+    isKitchenBusy?: boolean;
+    rushModeMessage?: string;
+    operatingHours?: {
+        openTime: string;
+        closeTime: string;
+    };
     isVerified?: boolean;
     address?: string;
     location?: {
@@ -59,11 +83,15 @@ export type RestaurantState = {
     getRestaurantOrders: () => Promise<void>;
     updateRestaurantOrder: (orderId: string, status: string) => Promise<void>;
     toggleRestaurantStatus: () => Promise<void>;
+    updateOutletStatus: (statusData: { isOpen?: boolean; isKitchenBusy?: boolean; rushModeMessage?: string; operatingHours?: { openTime: string; closeTime: string } }) => Promise<void>;
     getAllRestaurantsAdmin: () => Promise<Restaurant[]>;
     verifyRestaurantAdmin: (restaurantId: string) => Promise<void>;
     deleteRestaurantAdmin: (restaurantId: string) => Promise<void>;
     updateLocalRestaurantOrder: (updatedOrder: any) => void;
     addLocalRestaurantOrder: (newOrder: any) => void;
+    allCuisines: string[];
+    fetchAllCuisines: () => Promise<void>;
     updateSingleRestaurantMenu: (data: { action: "add" | "edit" | "delete", menu?: MenuItem, menuId?: string }) => void;
     updateSingleRestaurantRatings: (averageRating: number, numReviews: number) => void;
 }
+

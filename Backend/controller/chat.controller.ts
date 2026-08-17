@@ -71,14 +71,32 @@ export const sendChatMessage = async (req: Request, res: Response): Promise<void
         const populatedMessage = await ChatMessage.findById(newMessage._id)
             .populate("sender", "fullname email profilePicture");
 
-        // Broadcast message to order socket room
+        // Broadcast message to order socket room for active chat panels
         const io = getIo();
         io.to(`order_${orderId}`).emit("new_chat_message", populatedMessage);
+
+        // Determine recipient (either rider or customer) and notify their personal user room
+        const isSenderCustomer = order.user.toString() === userId;
+        const recipientId = isSenderCustomer ? order.rider?.toString() : order.user.toString();
+
+        if (recipientId) {
+            const senderName = (populatedMessage as any)?.sender?.fullname || (isSenderCustomer ? "Customer" : "Delivery Partner");
+            io.to(`user_${recipientId}`).emit("chat_notification", {
+                orderId,
+                message: populatedMessage,
+                senderName,
+                senderRole: isSenderCustomer ? "Customer" : "Delivery Partner",
+                text,
+                createdAt: (populatedMessage as any)?.createdAt || new Date().toISOString()
+            });
+            console.log(`[Chat] Sent chat_notification to user_${recipientId} for order ${orderId}`);
+        }
 
         res.status(201).json({
             success: true,
             message: populatedMessage
         });
+
     } catch (error) {
         console.error("sendChatMessage error:", error);
         res.status(500).json({ success: false, message: "Internal server error" });

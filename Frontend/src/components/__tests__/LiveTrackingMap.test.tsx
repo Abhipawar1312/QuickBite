@@ -57,9 +57,10 @@ describe("LiveTrackingMap", () => {
     );
 
     expect(screen.getAllByText(/estimated delivery/i)[0]).toBeInTheDocument();
-    expect(screen.getByText("Preparing")).toBeInTheDocument();
+    expect(screen.getByText(/Preparing/i)).toBeInTheDocument();
     expect(screen.getByTestId("map-container")).toBeInTheDocument();
   });
+
 
   test("renders correct route polyline and markers", () => {
     render(
@@ -78,4 +79,50 @@ describe("LiveTrackingMap", () => {
     expect(screen.getByText("🚀 Out for Delivery")).toBeInTheDocument();
     expect(screen.getByTestId("map-container")).toBeInTheDocument();
   });
+
+  test("renders ✓ Confirmed status badge and kitchen preparation text when order status is confirmed", () => {
+    render(
+      <LiveTrackingMap
+        orderId="test-order-id"
+        restaurantCoords={[72.8777, 19.076]}
+        customerCoords={[72.8888, 19.088]}
+        restaurantName="Bukhara"
+        customerName="Abhi"
+        orderStatus="confirmed"
+      />
+    );
+
+    expect(screen.getByText("✓ Confirmed")).toBeInTheDocument();
+    expect(screen.getByText(/Order confirmed! Kitchen will start preparation soon/i)).toBeInTheDocument();
+  });
+
+  test("renders correct status message for preparing and pending stages", () => {
+    const { rerender } = render(
+      <LiveTrackingMap
+        orderId="test-order-id"
+        restaurantCoords={[72.8777, 19.076]}
+        customerCoords={[72.8888, 19.088]}
+        restaurantName="Bukhara"
+        customerName="Abhi"
+        orderStatus="preparing"
+      />
+    );
+
+    expect(screen.getByText(/Your food is being prepared in the kitchen/i)).toBeInTheDocument();
+
+    rerender(
+      <LiveTrackingMap
+        orderId="test-order-id"
+        restaurantCoords={[72.8777, 19.076]}
+        customerCoords={[72.8888, 19.088]}
+        restaurantName="Bukhara"
+        customerName="Abhi"
+        orderStatus="pending"
+      />
+    );
+
+    expect(screen.getByText(/Order placed! Awaiting restaurant confirmation/i)).toBeInTheDocument();
+  });
 });
+
+

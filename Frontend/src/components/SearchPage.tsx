@@ -18,8 +18,11 @@ import { Card, CardContent, CardFooter } from "./ui/card";
 import { AspectRatio } from "./ui/aspect-ratio";
 import { Skeleton } from "./ui/skeleton";
 import { useRestaurantStore } from "@/store/useRestaurantStore";
+import { isRestaurantCurrentlyOpen } from "@/lib/operatingHours";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Variants } from "framer-motion";
+
+
 
 const SearchPage = () => {
   const params = useParams();
@@ -61,6 +64,31 @@ const SearchPage = () => {
     },
   };
 
+  const [quickFilter, setQuickFilter] = useState<{
+    rating4Plus: boolean;
+    fastDelivery: boolean;
+    pureVeg: boolean;
+    openOnly: boolean;
+  }>({
+    rating4Plus: false,
+    fastDelivery: false,
+    pureVeg: false,
+    openOnly: false,
+  });
+
+  const displayedRestaurants = (searchedRestaurant?.data || []).filter((r) => {
+    const openStatus = isRestaurantCurrentlyOpen(r);
+    if (quickFilter.rating4Plus && (r.averageRating || 0) < 4.0) return false;
+    if (quickFilter.fastDelivery && (r.deliveryTime || 0) > 35) return false;
+    if (quickFilter.openOnly && !openStatus.isOpen) return false;
+    if (quickFilter.pureVeg) {
+      const hasVeg = r.cuisines.some((c) => c.toLowerCase().includes("veg"));
+      if (!hasVeg) return false;
+    }
+    return true;
+  });
+
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -77,10 +105,10 @@ const SearchPage = () => {
           className="text-center mb-12"
         >
           <h1 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-4">
-            Discover Restaurants
+            Discover Restaurants & Food
           </h1>
           <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-            Search and explore top-rated places to eat around you
+            Search top-rated places to eat with fast delivery and live tracking
           </p>
         </motion.div>
 
@@ -108,7 +136,7 @@ const SearchPage = () => {
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-orange-500 transition-colors duration-300" />
                   <Input
                     value={searchQuery}
-                    placeholder="Search restaurants or cuisines..."
+                    placeholder="Search restaurants, cuisines, or dishes..."
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-12 pr-4 py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 dark:focus:ring-orange-800 transition-all duration-300"
                   />
@@ -125,6 +153,53 @@ const SearchPage = () => {
                   </Button>
                 </motion.div>
               </div>
+
+              {/* Quick Filter Chips */}
+              <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-1">
+                  Quick Filters:
+                </span>
+                <button
+                  onClick={() => setQuickFilter(prev => ({ ...prev, rating4Plus: !prev.rating4Plus }))}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all border ${
+                    quickFilter.rating4Plus
+                      ? "bg-amber-500 text-white border-amber-600 shadow-sm"
+                      : "bg-slate-50 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600"
+                  }`}
+                >
+                  ⭐ 4.0+ Stars
+                </button>
+                <button
+                  onClick={() => setQuickFilter(prev => ({ ...prev, fastDelivery: !prev.fastDelivery }))}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all border ${
+                    quickFilter.fastDelivery
+                      ? "bg-green-500 text-white border-green-600 shadow-sm"
+                      : "bg-slate-50 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600"
+                  }`}
+                >
+                  ⚡ &lt;35 mins Delivery
+                </button>
+                <button
+                  onClick={() => setQuickFilter(prev => ({ ...prev, pureVeg: !prev.pureVeg }))}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all border ${
+                    quickFilter.pureVeg
+                      ? "bg-emerald-600 text-white border-emerald-700 shadow-sm"
+                      : "bg-slate-50 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600"
+                  }`}
+                >
+                  🟢 Veg Options
+                </button>
+                <button
+                  onClick={() => setQuickFilter(prev => ({ ...prev, openOnly: !prev.openOnly }))}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all border ${
+                    quickFilter.openOnly
+                      ? "bg-blue-500 text-white border-blue-600 shadow-sm"
+                      : "bg-slate-50 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600"
+                  }`}
+                >
+                  🏪 Open Now
+                </button>
+              </div>
             </motion.div>
 
             {/* Results Header & Filters */}
@@ -136,7 +211,7 @@ const SearchPage = () => {
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                 <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                  {searchedRestaurant?.data.length || 0} Results Found
+                  {displayedRestaurants.length} Results Found
                 </h2>
                 {appliedFilter.length > 0 && (
                   <p className="text-sm text-slate-600 dark:text-slate-400">
@@ -190,12 +265,13 @@ const SearchPage = () => {
             >
               {loading ? (
                 <SearchPageSkeleton />
-              ) : searchedRestaurant?.data.length === 0 ? (
+              ) : displayedRestaurants.length === 0 ? (
                 <div className="col-span-full">
                   <NoResultFound />
                 </div>
               ) : (
-                searchedRestaurant?.data.map((restaurant, index) => (
+                displayedRestaurants.map((restaurant, index) => (
+
                   <motion.div
                     key={restaurant._id}
                     variants={cardVariants}
@@ -215,6 +291,33 @@ const SearchPage = () => {
                         </AspectRatio>
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
+                        {/* Open / Closed / Rush Status Badge */}
+                        {(() => {
+                          const status = isRestaurantCurrentlyOpen(restaurant);
+                          if (!status.isOpen) {
+                            return (
+                              <div className="absolute top-4 left-4 bg-red-600/90 text-white backdrop-blur-md rounded-full px-3 py-1 flex items-center gap-1.5 shadow-md">
+                                <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+                                <span className="text-xs font-bold">Closed</span>
+                              </div>
+                            );
+                          }
+                          if (restaurant.isKitchenBusy) {
+                            return (
+                              <div className="absolute top-4 left-4 bg-amber-500/95 text-white backdrop-blur-md rounded-full px-3 py-1 flex items-center gap-1.5 shadow-md">
+                                <span className="w-2 h-2 rounded-full bg-white" />
+                                <span className="text-xs font-bold">Kitchen Busy</span>
+                              </div>
+                            );
+                          }
+                          return (
+                            <div className="absolute top-4 left-4 bg-emerald-600/90 text-white backdrop-blur-md rounded-full px-3 py-1 flex items-center gap-1.5 shadow-md">
+                              <span className="w-2 h-2 rounded-full bg-emerald-200" />
+                              <span className="text-xs font-bold">Open</span>
+                            </div>
+                          );
+                        })()}
+
                         {/* Rating Badge */}
                         <div className="absolute top-4 right-4 bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1.5 shadow-md">
                           <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 animate-pulse" />
@@ -226,6 +329,7 @@ const SearchPage = () => {
                           </span>
                         </div>
                       </div>
+
 
                       <CardContent className="p-6 space-y-4">
                         {/* Restaurant Name */}

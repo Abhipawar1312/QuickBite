@@ -1,9 +1,12 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useUserStore } from "@/store/useUserStore";
 import { useRiderStore, RiderProfile } from "@/store/useRiderStore";
+import { useChatStore } from "@/store/useChatStore";
 import { motion, AnimatePresence } from "framer-motion";
 import { io } from "socket.io-client";
+import { BASE_URL } from "@/config/api";
 import { LiveTrackingMap } from "./LiveTrackingMap";
+
 import { ChatPanel } from "./ChatPanel";
 import {
   Bike,
@@ -37,6 +40,7 @@ import { Orders } from "@/types/orderType";
 
 export const RiderDashboard: React.FC = () => {
   const { user } = useUserStore();
+  const { openChat, isChatOpen } = useChatStore();
   const {
     loading,
     riderProfile,
@@ -60,11 +64,18 @@ export const RiderDashboard: React.FC = () => {
   const [contact, setContact] = useState("");
   const [earningsLogsOpen, setEarningsLogsOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [hasUnreadChat, setHasUnreadChat] = useState(false);
+
+  // Delivery PIN modal state
+  const [pinModalOpen, setPinModalOpen] = useState(false);
+  const [enteredPin, setEnteredPin] = useState("");
+  const [pinSubmitting, setPinSubmitting] = useState(false);
 
   // Countdown timer state for the latest incoming order
   const [currentOffer, setCurrentOffer] = useState<Orders | null>(null);
   const [countdown, setCountdown] = useState(10);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
 
   // Load profile details on start
   useEffect(() => {
@@ -81,7 +92,7 @@ export const RiderDashboard: React.FC = () => {
   useEffect(() => {
     if (!user) return;
 
-    const socket = io("http://localhost:8000", {
+    const socket = io(BASE_URL, {
       query: { userId: user._id, role: "rider" },
     });
 
@@ -103,7 +114,7 @@ export const RiderDashboard: React.FC = () => {
       return;
     }
 
-    const socket = io("http://localhost:8000", {
+    const socket = io(BASE_URL, {
       query: { userId: user._id, role: "rider" },
     });
 
@@ -124,10 +135,18 @@ export const RiderDashboard: React.FC = () => {
       }
     });
 
+    socket.on("chat_notification", () => {
+      if (!isChatOpen) {
+        setHasUnreadChat(true);
+      }
+    });
+
     return () => {
       socket.disconnect();
     };
-  }, [user, riderProfile?.isVerified, riderProfile?.isOnline, currentOffer?._id]);
+  }, [user, riderProfile?.isVerified, riderProfile?.isOnline, currentOffer?._id, isChatOpen]);
+
+
 
   // Coordinates transmission for live tracking
   useEffect(() => {
@@ -135,11 +154,12 @@ export const RiderDashboard: React.FC = () => {
       return;
     }
 
-    const socket = io("http://localhost:8000", {
+    const socket = io(BASE_URL, {
       query: { userId: user._id, role: "rider" },
     });
 
     socket.emit("join_order", activeOrder._id);
+
 
     const updateLocation = () => {
       // Prioritize the pinned location from the profile first (helps with testing/mocking location)
@@ -212,7 +232,8 @@ export const RiderDashboard: React.FC = () => {
         clearInterval(countdownIntervalRef.current);
       }
     };
-  }, [currentOffer]);
+  }, [currentOffer, removeIncomingOrder]);
+
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -226,7 +247,6 @@ export const RiderDashboard: React.FC = () => {
   const handleToggleOnline = async () => {
     const nextState = !riderProfile?.isOnline;
     if (nextState) {
-      // Check if rider has completed all profile details
       if (
         !riderProfile?.vehicleName ||
         !riderProfile?.licenseNumber ||
@@ -235,7 +255,7 @@ export const RiderDashboard: React.FC = () => {
         !user?.city ||
         !user?.country
       ) {
-        toast.error("Please complete all profile details (Vehicle Name, License Number, Contact Number, Address, City, Country) in your Profile tab before going online!");
+        toast.error("Please complete all profile details in your Profile tab before going online!");
         return;
       }
 
@@ -248,9 +268,7 @@ export const RiderDashboard: React.FC = () => {
           const { latitude, longitude } = position.coords;
           try {
             await toggleOnlineStatus(true, latitude, longitude);
-          } catch (error) {
-            // Error toast handled inside store
-          }
+          } catch (error) { }
         },
         (error) => {
           console.error(error);
@@ -264,7 +282,6 @@ export const RiderDashboard: React.FC = () => {
 
   const handleAcceptOffer = async () => {
     if (!currentOffer) return;
-    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
     try {
       await acceptOrder(currentOffer._id);
       setCurrentOffer(null);
@@ -280,13 +297,35 @@ export const RiderDashboard: React.FC = () => {
     }
   };
 
+
   const handleWorkflowStep = async (status: "reached_restaurant" | "delivered") => {
     if (!activeOrder) return;
+    if (status === "delivered") {
+      setEnteredPin("");
+      setPinModalOpen(true);
+      return;
+    }
     await updateDeliveryWorkflow(activeOrder._id, status);
   };
 
-  // View States
-  // 1. Not registered as rider
+  const handlePinSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeOrder) return;
+    if (!enteredPin || enteredPin.length !== 4) {
+      toast.error("Please enter the complete 4-digit verification PIN");
+      return;
+    }
+
+    setPinSubmitting(true);
+    const success = await updateDeliveryWorkflow(activeOrder._id, "delivered", enteredPin.trim());
+    setPinSubmitting(false);
+    if (success) {
+      setPinModalOpen(false);
+      setEnteredPin("");
+      toast.success("Order delivered successfully! Payout credited to your earnings. 🎉");
+    }
+  };
+
   if (!riderProfile) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-4">
@@ -398,11 +437,10 @@ export const RiderDashboard: React.FC = () => {
             <Button
               onClick={handleToggleOnline}
               disabled={loading}
-              className={`rounded-full p-3 h-12 w-12 flex items-center justify-center border-0 shadow-lg ${
-                riderProfile.isOnline
+              className={`rounded-full p-3 h-12 w-12 flex items-center justify-center border-0 shadow-lg ${riderProfile.isOnline
                   ? "bg-green-500 hover:bg-green-600 text-white"
                   : "bg-red-500 hover:bg-red-600 text-white"
-              }`}
+                }`}
             >
               <Power className="w-6 h-6" />
             </Button>
@@ -462,12 +500,13 @@ export const RiderDashboard: React.FC = () => {
                   ₹{riderEarnings?.total || 0}
                 </h3>
                 <p className="text-xs text-slate-500 mt-1 font-semibold hover:text-orange-500 transition-colors">
-                  {riderEarnings?.tripsTotal || 0} trips completed →
+                  {riderEarnings?.tripsTotal || 0} trips • ₹{riderEarnings?.totalTips || 0} tips ❤️
                 </p>
               </div>
               <div className="w-12 h-12 bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 rounded-xl flex items-center justify-center text-xl font-bold">
                 🏍️
               </div>
+
             </motion.div>
           </div>
         )}
@@ -484,7 +523,8 @@ export const RiderDashboard: React.FC = () => {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4 max-h-[380px] overflow-y-auto pr-2 mt-4">
+            <div className="space-y-4 max-h-[380px] overflow-y-auto pr-2 mt-4 custom-scrollbar">
+
               {riderDeliveries.length === 0 ? (
                 <div className="text-center py-12 text-slate-500 dark:text-slate-400">
                   <Bike className="w-12 h-12 text-slate-300 mx-auto mb-3" />
@@ -509,8 +549,13 @@ export const RiderDashboard: React.FC = () => {
                     </div>
                     <div className="text-right">
                       <span className="text-base font-extrabold text-green-600 dark:text-green-400">
-                        +₹{delivery.deliveryFee || 25}
+                        +₹{(delivery.deliveryFee || 25) + (delivery.tipAmount || 0)}
                       </span>
+                      {delivery.tipAmount && delivery.tipAmount > 0 ? (
+                        <span className="text-[10px] block text-orange-500 font-semibold">
+                          +₹{delivery.tipAmount} Tip ❤️
+                        </span>
+                      ) : null}
                       <span className="text-[10px] block text-green-500 font-bold uppercase tracking-wider">
                         Delivered ✓
                       </span>
@@ -529,15 +574,15 @@ export const RiderDashboard: React.FC = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm"
             >
               <motion.div
                 initial={{ scale: 0.9, y: 20 }}
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.9, y: 20 }}
-                className="max-w-md w-full bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-2xl border border-slate-100 dark:border-slate-700 p-6 space-y-6"
+                className="bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-2xl border-2 border-orange-500 max-w-sm w-full space-y-6"
               >
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
+                <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-700 pb-3">
                   <span className="text-sm font-bold text-orange-500 uppercase tracking-widest flex items-center gap-2">
                     <Bell className="w-4 h-4 animate-swing" />
                     Incoming Delivery Offer
@@ -564,16 +609,32 @@ export const RiderDashboard: React.FC = () => {
                       <span className="text-slate-500">Distance to customer:</span>
                       <span className="font-bold text-slate-800 dark:text-slate-200">{currentOffer.distanceKM ?? 2.5} KM</span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center">
                       <span className="text-slate-500">Your Earnings:</span>
-                      <span className="font-bold text-green-600 dark:text-green-400">₹{currentOffer.deliveryFee || 25}</span>
+                      <div className="text-right">
+                        <span className="font-bold text-green-600 dark:text-green-400 text-base">
+                          ₹{(currentOffer.deliveryFee || 25) + (currentOffer.tipAmount || 0)}
+                        </span>
+                        {currentOffer.tipAmount && currentOffer.tipAmount > 0 ? (
+                          <span className="text-[11px] block text-orange-500 font-semibold">
+                            (₹{currentOffer.deliveryFee || 25} fee + ₹{currentOffer.tipAmount} tip ❤️)
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                     <div className="flex justify-between border-t border-slate-200 dark:border-slate-700 pt-2 font-semibold">
                       <span>Items to pick:</span>
                       <span>{currentOffer.cartItems?.length || 1} items</span>
                     </div>
+                    {currentOffer.deliveryInstructions && (
+                      <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-950/40 p-2.5 rounded-xl border border-amber-200 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-300 font-medium">
+                        <FileText className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                        <span><strong>Delivery Note:</strong> {currentOffer.deliveryInstructions}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
+
 
                 <div className="flex gap-4">
                   <Button
@@ -627,16 +688,30 @@ export const RiderDashboard: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-3">
                     <Button
-                      onClick={() => setChatOpen(true)}
-                      className="bg-white/20 hover:bg-white/30 text-white border-0 rounded-xl px-4 py-2 text-xs font-bold flex items-center gap-1.5 shadow"
+                      onClick={() => {
+                        setHasUnreadChat(false);
+                        openChat(activeOrder._id);
+                      }}
+                      className={`rounded-xl px-4 py-2 text-xs font-bold flex items-center gap-1.5 shadow transition-all ${hasUnreadChat
+                          ? "bg-amber-400 hover:bg-amber-300 text-slate-950 animate-bounce ring-2 ring-white"
+                          : "bg-white/20 hover:bg-white/30 text-white border-0"
+                        }`}
                     >
-                      <MessageCircle className="w-4 h-4 fill-white text-white" />
+                      <MessageCircle className="w-4 h-4 fill-current text-current" />
                       Chat with Customer
+                      {hasUnreadChat && (
+                        <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-extrabold animate-pulse">
+                          NEW
+                        </span>
+                      )}
                     </Button>
                     <Badge className="bg-white text-orange-600 font-bold px-3 py-1 rounded-full text-xs">
-                      ₹{activeOrder.deliveryFee || 25} Delivery Earnings
+                      ₹{(activeOrder.deliveryFee || 25) + (activeOrder.tipAmount || 0)} Delivery Earnings
+                      {activeOrder.tipAmount && activeOrder.tipAmount > 0 ? ` (Incl. ₹${activeOrder.tipAmount} Tip)` : ""}
                     </Badge>
                   </div>
+
+
                 </div>
               </CardHeader>
 
@@ -645,11 +720,10 @@ export const RiderDashboard: React.FC = () => {
                 <div className="flex flex-col gap-6 relative pl-6 border-l-2 border-slate-200 dark:border-slate-700">
                   {/* Step 1: Accepted (Pick up) */}
                   <div className="relative">
-                    <div className={`absolute -left-[35px] top-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                      activeOrder.riderStatus === "accepted" || activeOrder.riderStatus === "reached_restaurant" || activeOrder.riderStatus === "delivered"
+                    <div className={`absolute -left-[35px] top-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${activeOrder.riderStatus === "accepted" || activeOrder.riderStatus === "reached_restaurant" || activeOrder.riderStatus === "delivered"
                         ? "bg-orange-500 text-white"
                         : "bg-slate-200 text-slate-500 dark:bg-slate-700"
-                    }`}>
+                      }`}>
                       1
                     </div>
                     <div>
@@ -668,11 +742,10 @@ export const RiderDashboard: React.FC = () => {
 
                   {/* Step 2: Out for delivery */}
                   <div className="relative">
-                    <div className={`absolute -left-[35px] top-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                      activeOrder.riderStatus === "reached_restaurant" || activeOrder.riderStatus === "delivered"
+                    <div className={`absolute -left-[35px] top-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${activeOrder.riderStatus === "reached_restaurant" || activeOrder.riderStatus === "delivered"
                         ? "bg-orange-500 text-white"
                         : "bg-slate-200 text-slate-500 dark:bg-slate-700"
-                    }`}>
+                      }`}>
                       2
                     </div>
                     <div>
@@ -686,9 +759,16 @@ export const RiderDashboard: React.FC = () => {
                         <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-orange-500 shrink-0" />{activeOrder.deliveryDetails?.address}, {activeOrder.deliveryDetails?.city}</span>
                         <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-orange-500 shrink-0" />{activeOrder.deliveryDetails?.contact || "N/A"}</span>
                       </div>
+                      {activeOrder.deliveryInstructions && (
+                        <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-950/40 p-2.5 rounded-xl border border-amber-200 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-300 font-medium mt-2">
+                          <FileText className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                          <span><strong>Customer Delivery Note:</strong> {activeOrder.deliveryInstructions}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
+
 
                 {/* Real-time Live Tracking Map for Rider */}
                 <div className="mt-6 border-t border-slate-100 dark:border-slate-700 pt-6">
@@ -744,15 +824,83 @@ export const RiderDashboard: React.FC = () => {
             </CardDescription>
           </Card>
         )}
-        {activeOrder && (
-          <ChatPanel
-            orderId={activeOrder._id}
-            open={chatOpen}
-            onOpenChange={setChatOpen}
-            currentUserId={user?._id || ""}
-          />
-        )}
+
+        {/* 4-Digit Proof of Delivery PIN Verification Dialog */}
+        <Dialog open={pinModalOpen} onOpenChange={setPinModalOpen}>
+          <DialogContent className="max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-100 dark:border-slate-800 shadow-2xl">
+            <DialogHeader className="text-center space-y-3">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-400 text-white mx-auto flex items-center justify-center font-bold text-3xl shadow-lg shadow-orange-500/30 ring-4 ring-orange-100 dark:ring-orange-950/50">
+                🔐
+              </div>
+              <DialogTitle className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                Enter Handover PIN
+              </DialogTitle>
+            </DialogHeader>
+
+
+            <form onSubmit={handlePinSubmit} className="space-y-6 pt-3">
+              <div className="space-y-3">
+                <div className="relative">
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={4}
+                    placeholder="• • • •"
+                    value={enteredPin}
+                    onChange={(e) => setEnteredPin(e.target.value.replace(/\D/g, ""))}
+                    className="text-center text-3xl font-mono tracking-[0.5em] h-16 rounded-2xl border-2 border-orange-300 dark:border-orange-500/40 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/20 font-black text-orange-600 dark:text-orange-400 bg-orange-50/50 dark:bg-slate-800/80 transition-all shadow-inner"
+                    autoFocus
+                  />
+                </div>
+                <div className="flex justify-between items-center px-1 text-[11px] text-slate-400 dark:text-slate-500">
+                  <span>Handover Verification</span>
+                  <span className={enteredPin.length === 4 ? "text-green-500 font-bold" : ""}>
+                    {enteredPin.length} / 4 digits entered
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-2xl p-3 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2.5">
+                <span className="text-base">💡</span>
+                <span>The customer can find their 4-digit PIN in the <strong>Delivery Handover PIN</strong> box on their order tracking page.</span>
+              </div>
+
+
+
+
+              <div className="flex gap-3 pt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setEnteredPin("");
+                    setPinModalOpen(false);
+                  }}
+                  className="flex-1 h-12 rounded-xl font-bold border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={pinSubmitting || enteredPin.length !== 4}
+                  className="flex-1 h-12 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-green-500/20 transition-all disabled:opacity-50"
+                >
+                  {pinSubmitting ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Verifying...
+                    </>
+                  ) : (
+                    "Confirm Delivery ✨"
+                  )}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
       </div>
     </div>
   );
 };
+

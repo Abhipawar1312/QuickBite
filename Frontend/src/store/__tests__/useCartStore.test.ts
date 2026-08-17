@@ -35,8 +35,9 @@ describe("useCartStore", () => {
     useCartStore.getState().addToCart(mockItem1);
     const cart = useCartStore.getState().cart;
     expect(cart).toHaveLength(1);
-    expect(cart[0]).toEqual({ ...mockItem1, quantity: 1 });
+    expect(cart[0]).toMatchObject({ ...mockItem1, quantity: 1, selectedAddOns: [] });
   });
+
 
   test("should increment quantity if adding existing item", () => {
     useCartStore.getState().addToCart(mockItem1);
@@ -86,4 +87,44 @@ describe("useCartStore", () => {
     useCartStore.getState().setCart(items);
     expect(useCartStore.getState().cart).toEqual(items);
   });
+
+  test("should remove specific add-on from cart item", () => {
+    useCartStore.getState().addToCart(mockItem1, undefined, undefined, [
+      { name: "Extra Cheese", price: 30 },
+      { name: "Dip", price: 15 },
+    ]);
+    const cartItemId = useCartStore.getState().cart[0].cartItemId!;
+    useCartStore.getState().removeAddOnFromCartItem(cartItemId, "Dip");
+    const updatedItem = useCartStore.getState().cart[0];
+    expect(updatedItem.selectedAddOns).toHaveLength(1);
+    expect(updatedItem.selectedAddOns![0].name).toBe("Extra Cheese");
+  });
+
+  test("should update add-ons for cart item", () => {
+    useCartStore.getState().addToCart(mockItem1, undefined, undefined, [
+      { name: "Extra Cheese", price: 30 },
+    ]);
+    const cartItemId = useCartStore.getState().cart[0].cartItemId!;
+    useCartStore.getState().updateCartItemAddOns(cartItemId, [
+      { name: "Garlic Dip", price: 20 },
+      { name: "Jalapenos", price: 25 },
+    ]);
+    const updatedItem = useCartStore.getState().cart[0];
+    expect(updatedItem.selectedAddOns).toHaveLength(2);
+    expect(updatedItem.selectedAddOns!.map((a: any) => a.name)).toEqual(["Garlic Dip", "Jalapenos"]);
+
+  });
+
+  test("should support add-ons with quantities > 1", () => {
+    useCartStore.getState().addToCart(mockItem1, undefined, undefined, [
+      { name: "Red Chutney", price: 10, quantity: 2 },
+      { name: "Extra Cheese", price: 30, quantity: 1 },
+    ]);
+    const item = useCartStore.getState().cart[0];
+    expect(item.selectedAddOns).toHaveLength(2);
+    expect(item.selectedAddOns![0].quantity).toBe(2);
+    expect(item.cartItemId).toContain("Red Chutneyx2");
+  });
 });
+
+

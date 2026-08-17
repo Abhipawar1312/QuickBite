@@ -9,12 +9,21 @@ import { Button } from "./ui/button";
 import HeroImage from "@/assets/foodImage.png";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useUserStore } from "@/store/useUserStore";
+import { SmartRecommendations } from "./SmartRecommendations";
 
 const HeroSection = () => {
   const [searchText, setSearchText] = useState<string>("");
   const navigate = useNavigate();
+  const { user } = useUserStore();
+
+  const currentCity =
+    user?.savedAddresses?.find((addr) => addr.isDefault)?.city ||
+    user?.city ||
+    "";
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+
     if (e.key === "Enter" && searchText.trim() !== "") {
       navigate(`/search/${searchText}`);
     }
@@ -235,8 +244,20 @@ const HeroSection = () => {
           </div>
         </motion.div>
       </motion.div>
+
+      {/* Smart AI Recommendations Section on Home: Trending Dishes */}
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-6">
+        <SmartRecommendations
+          variant="trending"
+          city={currentCity}
+          title={currentCity ? `🔥 Trending Dishes in ${currentCity}` : "🔥 Trending Dishes In Your Area"}
+        />
+      </div>
+
     </div>
   );
 };
 
+
 export default HeroSection;
+

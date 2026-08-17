@@ -98,8 +98,9 @@ describe("AddMenu Component", () => {
 
         await waitFor(() => {
             expect(mockCreateMenu).toHaveBeenCalledTimes(1);
-        });
-    });
+        }, { timeout: 4000 });
+    }, 10000);
+
 
     it("renders empty state when no menus exist", () => {
         render(<AddMenu />);

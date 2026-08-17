@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useChatStore } from "@/store/useChatStore";
 import { io } from "socket.io-client";
+import { BASE_URL } from "@/config/api";
 import { Send, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -35,8 +36,9 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   useEffect(() => {
     if (!open || !orderId) return;
 
-    const socket = io("http://localhost:8000");
+    const socket = io(BASE_URL);
     socket.emit("join_order", orderId);
+
 
     socket.on("new_chat_message", (message: any) => {
       addLocalMessage(message);

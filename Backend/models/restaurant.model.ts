@@ -12,6 +12,12 @@ export interface IRestaurant {
     menus: mongoose.Types.ObjectId[];
     contactNumber: string;
     isOpen: boolean;
+    isKitchenBusy?: boolean;
+    rushModeMessage?: string;
+    operatingHours?: {
+        openTime: string;
+        closeTime: string;
+    };
     isVerified: boolean;
     averageRating?: number;
     numReviews?: number;
@@ -67,6 +73,19 @@ const restaurantSchema = new mongoose.Schema<IRestaurantDocument>({
         type: Boolean,
         default: true
     },
+    isKitchenBusy: {
+        type: Boolean,
+        default: false
+    },
+    rushModeMessage: {
+        type: String,
+        default: "The kitchen is experiencing high demand. Orders are temporarily paused — please try placing your order in 15–30 minutes."
+    },
+
+    operatingHours: {
+        openTime: { type: String, default: "09:00" },
+        closeTime: { type: String, default: "23:30" }
+    },
     isVerified: {
         type: Boolean,
         default: false
@@ -92,4 +111,4 @@ const restaurantSchema = new mongoose.Schema<IRestaurantDocument>({
     }
 }, { timestamps: true });
 restaurantSchema.index({ location: "2dsphere" });
-export const Restaurant = mongoose.model("Restaurant", restaurantSchema);
+export const Restaurant = mongoose.model("Restaurant", restaurantSchema);

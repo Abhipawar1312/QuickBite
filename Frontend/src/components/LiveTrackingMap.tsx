@@ -2,7 +2,9 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { io } from "socket.io-client";
+import { BASE_URL } from "@/config/api";
 import { motion } from "framer-motion";
+
 import { Navigation, Loader2, Package } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -190,8 +192,9 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
   // Socket: listen for real-time rider position
   useEffect(() => {
     if (!orderId) return;
-    const socket = io("http://localhost:8000");
+    const socket = io(BASE_URL);
     socket.emit("join_order", orderId);
+
 
     socket.on("rider_location_updated", (data: { lat: number; lng: number }) => {
       setRiderPos([data.lat, data.lng]);
@@ -279,11 +282,16 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
   ];
 
   const getStatusBadge = () => {
-    if (orderStatus === "delivered") return { label: "Delivered ✓", cls: "bg-green-500 text-white" };
-    if (orderStatus === "outfordelivery") return { label: "🚀 Out for Delivery", cls: "bg-orange-500 text-white animate-pulse" };
-    if (orderStatus === "ready_for_riders") return { label: hasRider ? "Rider Accepted" : "🕐 Finding Rider", cls: "bg-purple-500 text-white" };
-    return { label: "Preparing", cls: "bg-blue-500 text-white" };
+    const s = (orderStatus || "").toLowerCase();
+    if (s === "delivered") return { label: "Delivered ✓", cls: "bg-green-600 text-white" };
+    if (s === "outfordelivery") return { label: "🚀 Out for Delivery", cls: "bg-orange-500 text-white animate-pulse" };
+    if (s === "ready_for_riders") return { label: hasRider ? "🛵 Rider Assigned" : "🕐 Finding Rider", cls: "bg-purple-500 text-white" };
+    if (s === "preparing") return { label: "👨‍🍳 Preparing", cls: "bg-blue-500 text-white" };
+    if (s === "confirmed") return { label: "✓ Confirmed", cls: "bg-emerald-500 text-white" };
+    if (s === "cancelled") return { label: "✕ Cancelled", cls: "bg-red-500 text-white" };
+    return { label: s ? s.charAt(0).toUpperCase() + s.slice(1) : "Confirmed", cls: "bg-emerald-500 text-white" };
   };
+
 
   const statusBadge = getStatusBadge();
 
@@ -329,7 +337,7 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
         </div>
 
         {/* Real Leaflet Map */}
-        <div className="relative w-full h-[400px]">
+        <div className="relative w-full h-[400px] z-0 isolate">
           <MapContainer
             center={mapCenter}
             zoom={13}
@@ -337,6 +345,7 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
             zoomControl={false}
             scrollWheelZoom={true}
           >
+
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -439,12 +448,23 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
             >
               <Package className="w-4 h-4 text-blue-500 shrink-0" />
               <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">
-                {orderStatus === "preparing"
-                  ? "Your food is being prepared 🍳"
-                  : "Waiting for a rider to accept your order…"}
+                {(() => {
+                  const normalized = orderStatus?.toLowerCase()?.trim() || "";
+                  if (normalized === "confirmed") {
+                    return "Order confirmed! Kitchen will start preparation soon 👨‍🍳";
+                  }
+                  if (normalized === "preparing") {
+                    return "Your food is being prepared in the kitchen 🍳";
+                  }
+                  if (normalized === "pending") {
+                    return "Order placed! Awaiting restaurant confirmation ⏳";
+                  }
+                  return "Waiting for a rider to accept your order… 🛵";
+                })()}
               </p>
             </motion.div>
           )}
+
         </div>
 
         {/* Live Status Footer */}

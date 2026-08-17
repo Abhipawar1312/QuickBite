@@ -1,7 +1,3 @@
-"use client";
-
-import type React from "react";
-
 import {
   Loader2,
   LocateIcon,
@@ -15,6 +11,12 @@ import {
   Bike,
   Shield,
   Phone,
+  Home,
+  Briefcase,
+  Building,
+  Plus,
+  Trash2,
+  FileText,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { type FormEvent, useRef, useState, useEffect } from "react";
@@ -25,15 +27,37 @@ import { useUserStore } from "@/store/useUserStore";
 import { useRiderStore } from "@/store/useRiderStore";
 import { MapAddressPicker } from "./MapAddressPicker";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
+import { toast } from "sonner";
 
 const Profile = () => {
-  const { user, updateProfile } = useUserStore();
+  const { user, updateProfile, addSavedAddress, deleteSavedAddress } = useUserStore();
   const { riderProfile, getRiderProfile } = useRiderStore();
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [selectedProfilePicture, setSelectedProfilePicture] = useState<string>(user?.profilePicture || "");
   const imageRef = useRef<HTMLInputElement | null>(null);
+
+  // Add Address Modal state
+  const [addressModalOpen, setAddressModalOpen] = useState(false);
+  const [newAddress, setNewAddress] = useState({
+    label: "Home",
+    address: "",
+    city: "",
+    pincode: "",
+    deliveryInstructions: "",
+    latitude: undefined as number | undefined,
+    longitude: undefined as number | undefined,
+  });
+  const [addressSaving, setAddressSaving] = useState(false);
+
   const [profileData, setProfileData] = useState({
     fullname: user?.fullname || "",
     email: user?.email || "",
@@ -41,6 +65,7 @@ const Profile = () => {
     address: user?.address || "",
     city: user?.city || "",
     country: user?.country || "",
+    pincode: user?.pincode || "",
     profilePicture: user?.profilePicture || "",
     vehicleName: "",
     licenseNumber: "",
@@ -64,10 +89,12 @@ const Profile = () => {
         address: user.address || "",
         city: user.city || "",
         country: user.country || "",
+        pincode: user.pincode || "",
       }));
       setSelectedProfilePicture(user.profilePicture || "");
     }
   }, [user, isEditing]);
+
 
   useEffect(() => {
     if (riderProfile) {
@@ -118,6 +145,31 @@ const Profile = () => {
     }
   };
 
+  const handleAddAddressSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAddress.address.trim() || !newAddress.city.trim()) {
+      toast.error("Address and city are required");
+      return;
+    }
+    setAddressSaving(true);
+    await addSavedAddress(newAddress);
+    setAddressSaving(false);
+    setAddressModalOpen(false);
+    setNewAddress({
+      label: "Home",
+      address: "",
+      city: "",
+      pincode: "",
+      deliveryInstructions: "",
+      latitude: undefined,
+      longitude: undefined,
+    });
+  };
+
+  const handleDeleteAddress = async (addressId: string) => {
+    await deleteSavedAddress(addressId);
+  };
+
   const formFields = [
     {
       label: "Full Name",
@@ -161,6 +213,13 @@ const Profile = () => {
       disabled: false,
       type: "text",
     },
+    {
+      label: "Pincode (6 digits)",
+      icon: MapPin,
+      name: "pincode",
+      disabled: false,
+      type: "text",
+    },
   ];
 
   if (user?.role === "rider") {
@@ -194,18 +253,20 @@ const Profile = () => {
       ...prev,
       address: data.address,
       city: data.city,
+      pincode: data.pincode || prev.pincode,
       country: data.country,
       latitude: data.latitude,
       longitude: data.longitude,
     }));
   };
 
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6 }}
-      className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 py-6 sm:py-8 md:py-12 px-4 flex items-center justify-center"
+      className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 py-6 sm:py-8 md:py-12 px-4 flex flex-col items-center justify-center space-y-6"
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
@@ -213,7 +274,7 @@ const Profile = () => {
         transition={{ delay: 0.2, duration: 0.5 }}
         className="w-full max-w-4xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden"
       >
-        {/* Mobile-Optimized Header */}
+        {/* Header */}
         <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-4 sm:p-6 md:p-8 text-white relative overflow-hidden">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
@@ -227,7 +288,7 @@ const Profile = () => {
                   Your Profile
                 </h1>
                 <p className="text-orange-100 text-sm sm:text-base">
-                  Manage your account information
+                  Manage your personal details and preferences
                 </p>
               </div>
               <motion.button
@@ -241,7 +302,6 @@ const Profile = () => {
             </div>
           </motion.div>
 
-          {/* Mobile-Optimized Background Pattern */}
           <div className="absolute inset-0 opacity-10">
             <div className="absolute top-2 right-2 sm:top-4 sm:right-4 w-20 h-20 sm:w-32 sm:h-32 bg-white rounded-full" />
             <div className="absolute bottom-2 left-2 sm:bottom-4 sm:left-4 w-16 h-16 sm:w-24 sm:h-24 bg-white rounded-full" />
@@ -249,7 +309,7 @@ const Profile = () => {
         </div>
 
         <form onSubmit={updateProfileHandler} className="p-4 sm:p-6 md:p-8">
-          {/* Mobile-Optimized Profile Picture Section */}
+          {/* Profile Picture */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -408,6 +468,189 @@ const Profile = () => {
         </form>
       </motion.div>
 
+      {/* Saved Delivery Addresses Section (Address Book) */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="w-full max-w-4xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl sm:rounded-3xl shadow-xl p-6 sm:p-8"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-100 dark:border-slate-700 pb-4">
+          <div>
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-orange-500" />
+              Saved Delivery Addresses
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+              Manage your delivery locations for fast 1-click checkout
+            </p>
+          </div>
+          <Button
+            onClick={() => setAddressModalOpen(true)}
+            className="bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl text-xs sm:text-sm px-4 py-2 flex items-center gap-1.5 shadow-md"
+          >
+            <Plus className="w-4 h-4" />
+            Add New Address
+          </Button>
+        </div>
+
+        {(!user?.savedAddresses || user.savedAddresses.length === 0) ? (
+          <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+            <Building className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+            <p className="text-sm font-medium">No saved addresses yet.</p>
+            <p className="text-xs text-slate-400 mt-0.5">Add your Home, Work, or Favorite location for swift checkout.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {user.savedAddresses.map((addr) => {
+              const Icon = addr.label?.toLowerCase() === "work" ? Briefcase : addr.label?.toLowerCase() === "home" ? Home : Building;
+
+              return (
+                <div
+                  key={addr._id}
+                  className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 flex items-start justify-between gap-3 shadow-sm hover:border-orange-300 transition-colors"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 rounded-lg bg-orange-100 dark:bg-orange-950/40 text-orange-600">
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <span className="font-bold text-sm text-slate-900 dark:text-white">
+                        {addr.label}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-700 dark:text-slate-300 mt-2 font-medium">
+                      {addr.address}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {addr.city} {addr.pincode ? `• ${addr.pincode}` : ""}
+                    </p>
+                    {addr.deliveryInstructions && (
+                      <p className="text-[11px] text-orange-600 dark:text-orange-400 mt-1 flex items-center gap-1">
+                        <FileText className="w-3 h-3" />
+                        {addr.deliveryInstructions}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => addr._id && handleDeleteAddress(addr._id)}
+                    className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl h-8 w-8"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </motion.div>
+
+      {/* Add New Address Dialog */}
+      <Dialog open={addressModalOpen} onOpenChange={setAddressModalOpen}>
+        <DialogContent className="max-w-md bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-100 dark:border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-orange-500" />
+              Save New Delivery Address
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Save your address for seamless 1-click orders
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleAddAddressSubmit} className="space-y-4 pt-2">
+            {/* Label selection */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Address Type</Label>
+              <div className="flex gap-2">
+                {["Home", "Work", "Other"].map((lbl) => (
+                  <button
+                    key={lbl}
+                    type="button"
+                    onClick={() => setNewAddress((prev) => ({ ...prev, label: lbl }))}
+                    className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-colors ${
+                      newAddress.label === lbl
+                        ? "bg-orange-500 text-white border-orange-600"
+                        : "bg-slate-50 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600"
+                    }`}
+                  >
+                    {lbl}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Address Line</Label>
+              <Input
+                type="text"
+                placeholder="House / Flat / Road, Area"
+                value={newAddress.address}
+                onChange={(e) => setNewAddress((prev) => ({ ...prev, address: e.target.value }))}
+                className="text-xs rounded-xl"
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">City</Label>
+                <Input
+                  type="text"
+                  placeholder="e.g. Mumbai, Pune"
+                  value={newAddress.city}
+                  onChange={(e) => setNewAddress((prev) => ({ ...prev, city: e.target.value }))}
+                  className="text-xs rounded-xl"
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Pincode</Label>
+                <Input
+                  type="text"
+                  placeholder="6 digits"
+                  maxLength={6}
+                  value={newAddress.pincode}
+                  onChange={(e) => setNewAddress((prev) => ({ ...prev, pincode: e.target.value }))}
+                  className="text-xs rounded-xl"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Delivery Instructions (Optional)</Label>
+              <Input
+                type="text"
+                placeholder="e.g. Ring bell, leave at guard desk"
+                value={newAddress.deliveryInstructions}
+                onChange={(e) => setNewAddress((prev) => ({ ...prev, deliveryInstructions: e.target.value }))}
+                className="text-xs rounded-xl"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setAddressModalOpen(false)}
+                className="flex-1 rounded-xl text-xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={addressSaving}
+                className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl text-xs"
+              >
+                {addressSaving ? "Saving..." : "Save Address"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <MapAddressPicker
         open={showMapPicker}
         onClose={() => setShowMapPicker(false)}
@@ -420,3 +663,4 @@ const Profile = () => {
 };
 
 export default Profile;
+
