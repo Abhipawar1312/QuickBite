@@ -1,5 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import Redis from "ioredis";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 interface RateLimitRecord {
   count: number;

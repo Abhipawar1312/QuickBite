@@ -1,4 +1,7 @@
 import Redis from "ioredis";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 /**
  * High-Speed Caching Layer (Redis + In-Memory Fallback)

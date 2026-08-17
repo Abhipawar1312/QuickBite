@@ -1,18 +1,8 @@
 // Centralized API and WebSocket Base URLs
-// You can switch between Local and Production (Render) in your Frontend/.env file via VITE_API_URL
+// Reads directly from .env (VITE_API_URL) with fallback to http://localhost:8000
 
-const getEnvApiUrl = (): string => {
-  try {
-    if (typeof import.meta !== "undefined" && import.meta?.env?.VITE_API_URL) {
-      return import.meta.env.VITE_API_URL;
-    }
-  } catch {
-    // fallback
-  }
-  return "http://localhost:8000";
-};
+export const BASE_URL: string = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-export const BASE_URL: string = getEnvApiUrl();
 
 
 // API Base URL (e.g. http://localhost:8000/api/v1 or https://quickbite-ogw0.onrender.com/api/v1)
