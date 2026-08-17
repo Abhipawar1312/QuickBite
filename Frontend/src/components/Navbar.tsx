@@ -236,7 +236,16 @@ const Navbar = () => {
             whileTap={{ scale: 0.95 }}
             className="flex items-center"
           >
-            <Link to="/" className="flex items-center gap-3 group">
+            <Link
+              to={
+                user?.admin || user?.role === "restaurant_owner"
+                  ? "/admin/analytics"
+                  : user?.role === "rider"
+                  ? "/rider/dashboard"
+                  : "/"
+              }
+              className="flex items-center gap-3 group"
+            >
               <div className="relative">
                 <motion.img
                   whileHover={{ rotate: 360 }}
@@ -265,15 +274,22 @@ const Navbar = () => {
               {user?.role !== "rider" && (
                 <>
                   {[
-                    { to: "/", label: "Home", icon: Home },
+                    // Customers only: Home link (Restaurant owners use Dashboard)
+                    ...(!user?.admin && user?.role !== "restaurant_owner"
+                      ? [{ to: "/", label: "Home", icon: Home }]
+                      : []),
                     { to: "/profile", label: "Profile", icon: UserCircle },
                     // Regular customer links
-                    ...(!user?.admin ? [
-                      { to: "/order/status", label: "Orders", icon: HandPlatter },
-                      { to: "/favorites", label: "Wishlist", icon: Heart },
-                    ] : []),
+                    ...(!user?.admin && user?.role !== "restaurant_owner"
+                      ? [
+                          { to: "/order/status", label: "Orders", icon: HandPlatter },
+                          { to: "/favorites", label: "Wishlist", icon: Heart },
+                        ]
+                      : []),
                   ].map((link, index) => {
                     const Icon = link.icon;
+
+
                     return (
                       <motion.div
                         key={link.to}
@@ -560,18 +576,15 @@ const MobileNavbar = () => {
     // Always: Profile
     { to: "/profile", label: "Profile", icon: User },
     // Regular users only: Home, Orders, Wishlist
-    ...(user?.role !== "rider" && !user?.admin
+    ...(user?.role !== "rider" && !user?.admin && user?.role !== "restaurant_owner"
       ? [
           { to: "/", label: "Home", icon: Home },
           { to: "/order/status", label: "My Orders", icon: HandPlatter },
           { to: "/favorites", label: "Wishlist", icon: Heart },
         ]
       : []),
-    // Admin (restaurant owner): Home only (orders accessed from Dashboard)
-    ...(user?.admin
-      ? [{ to: "/", label: "Home", icon: Home }]
-      : []),
   ];
+
 
   const adminLinks = [
     { to: "/admin/menu", label: "Menu", icon: SquareMenu },

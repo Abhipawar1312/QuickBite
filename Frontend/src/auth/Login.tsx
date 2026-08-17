@@ -19,7 +19,7 @@ const Login = () => {
   });
   const [errors, setErrors] = useState<Partial<LoginInputState>>({});
   const [showPassword, setShowPassword] = useState(false);
-  const { loading, login, loginWithGoogle } = useUserStore();
+  const { loading, login, loginWithGoogle, user } = useUserStore();
   const { theme } = useThemeStore();
   const navigate = useNavigate();
 
@@ -29,12 +29,21 @@ const Login = () => {
       try {
         if (response.credential) {
           await loginWithGoogle(response.credential);
-          navigate("/");
+          const currentUser = (useUserStore as any).getState?.()?.user || user;
+          if (currentUser?.role === "rider") {
+            navigate("/rider/dashboard");
+          } else if (currentUser?.admin || currentUser?.role === "restaurant_owner") {
+            navigate("/admin/analytics");
+          } else {
+            navigate("/");
+          }
+
         }
       } catch (error) {
         console.error("Google login failure:", error);
       }
     };
+
 
     if (typeof window !== "undefined" && (window as any).google) {
       try {
@@ -98,8 +107,17 @@ const Login = () => {
     }
     try {
       await login(input);
-      navigate("/");
+      const currentUser = (useUserStore as any).getState?.()?.user || user;
+      if (currentUser?.role === "rider") {
+        navigate("/rider/dashboard");
+      } else if (currentUser?.admin || currentUser?.role === "restaurant_owner") {
+        navigate("/admin/analytics");
+      } else {
+        navigate("/");
+      }
     } catch (error: any) {
+
+
       const message = error.message;
       if (message === "Incorrect email or password") {
         setErrors({ email: message, password: message });

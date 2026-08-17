@@ -283,25 +283,23 @@ const Success = () => {
                   key={order._id}
                   variants={orderVariants}
                   layout
-                  className={`bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border rounded-3xl shadow-2xl hover:shadow-3xl transition-all duration-500 overflow-hidden group ${
-                    isCancelled
+                  className={`bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border rounded-3xl shadow-2xl hover:shadow-3xl transition-all duration-500 overflow-hidden group ${isCancelled
                       ? "border-red-200 dark:border-red-900/50 opacity-95"
                       : isPending
-                      ? "border-amber-300 dark:border-amber-800"
-                      : "border-slate-200 dark:border-slate-700"
-                  }`}
+                        ? "border-amber-300 dark:border-amber-800"
+                        : "border-slate-200 dark:border-slate-700"
+                    }`}
                 >
                   {/* Order Header */}
                   <div
-                    className={`p-6 text-white relative overflow-hidden transition-all duration-300 ${
-                      isCancelled
+                    className={`p-6 text-white relative overflow-hidden transition-all duration-300 ${isCancelled
                         ? "bg-gradient-to-r from-slate-900 via-rose-950 to-slate-900"
                         : isDelivered
-                        ? "bg-gradient-to-r from-slate-700 to-slate-800"
-                        : isPending
-                        ? "bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-700"
-                        : "bg-gradient-to-r from-orange-500 to-orange-600"
-                    }`}
+                          ? "bg-gradient-to-r from-slate-700 to-slate-800"
+                          : isPending
+                            ? "bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-700"
+                            : "bg-gradient-to-r from-orange-500 to-orange-600"
+                      }`}
                   >
                     <div className="relative z-10">
                       <div className="flex items-center justify-between mb-4">
@@ -528,13 +526,12 @@ const Success = () => {
 
                     {/* Order Total & Fee Breakdown */}
                     <div
-                      className={`space-y-2 p-4 rounded-2xl border ${
-                        isCancelled
+                      className={`space-y-2 p-4 rounded-2xl border ${isCancelled
                           ? "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700"
                           : isPending
-                          ? "bg-amber-50/60 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"
-                          : "bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 border-orange-200 dark:border-orange-800"
-                      }`}
+                            ? "bg-amber-50/60 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"
+                            : "bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 border-orange-200 dark:border-orange-800"
+                        }`}
                     >
 
                       <div className="flex justify-between items-center text-xs text-slate-600 dark:text-slate-400">
@@ -608,11 +605,10 @@ const Success = () => {
                         </div>
                         <Button
                           onClick={() => handleOpenChat(order._id)}
-                          className={`font-bold rounded-xl px-4 py-2 text-xs flex items-center gap-1.5 shadow transition-all ${
-                            unreadChatOrderIds.includes(order._id)
+                          className={`font-bold rounded-xl px-4 py-2 text-xs flex items-center gap-1.5 shadow transition-all ${unreadChatOrderIds.includes(order._id)
                               ? "bg-amber-500 hover:bg-amber-400 text-slate-950 animate-bounce ring-2 ring-orange-400"
                               : "bg-orange-500 hover:bg-orange-600 text-white"
-                          }`}
+                            }`}
                         >
                           <MessageCircle className="w-4 h-4 fill-current text-current" />
                           Chat with Rider
@@ -760,11 +756,10 @@ const Success = () => {
                       className="p-1 focus:outline-none transition-colors duration-200"
                     >
                       <Star
-                        className={`w-10 h-10 ${
-                          isGold
+                        className={`w-10 h-10 ${isGold
                             ? "fill-yellow-400 text-yellow-400 drop-shadow-md"
                             : "fill-slate-200 text-slate-200 dark:fill-slate-700 dark:text-slate-700"
-                        }`}
+                          }`}
                       />
                     </motion.button>
                   );
@@ -787,7 +782,7 @@ const Success = () => {
               <textarea
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                placeholder="Delicious taste, prompt delivery, great service!"
+                placeholder="Delicious taste, great service!"
                 className="w-full min-h-[100px] p-4 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:border-orange-500 focus:ring-2 focus:ring-orange-200 dark:focus:ring-orange-800 text-slate-900 dark:text-white transition-all duration-300 resize-none outline-none text-sm leading-relaxed"
                 required
               />

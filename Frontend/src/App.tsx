@@ -42,6 +42,10 @@ const ProtectedRoutes = ({ children }: { children: React.ReactNode }) => {
     if (isAuthenticated && user?.role === "rider" && window.location.pathname === "/") {
       navigate("/rider/dashboard", { replace: true });
     }
+    // Redirect restaurant owners to their analytics dashboard when they land on "/"
+    if (isAuthenticated && (user?.admin || user?.role === "restaurant_owner") && window.location.pathname === "/") {
+      navigate("/admin/analytics", { replace: true });
+    }
   }, [isAuthenticated, user, navigate]);
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
@@ -52,10 +56,12 @@ const AuthenticatedUser = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, user } = useUserStore();
   if (isAuthenticated && user?.isVerified) {
     if (user?.role === "rider") return <Navigate to="/rider/dashboard" replace />;
+    if (user?.admin || user?.role === "restaurant_owner") return <Navigate to="/admin/analytics" replace />;
     return <Navigate to="/" replace />;
   }
   return <>{children}</>;
 };
+
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isAuthenticated } = useUserStore();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
