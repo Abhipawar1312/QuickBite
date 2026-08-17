@@ -1,7 +1,7 @@
 // Centralized API and WebSocket Base URLs
-// Reads directly from .env (FRONTEND_URL) with fallback to http://localhost:8000
+// Reads directly from .env (VITE_API_URL) with fallback to http://localhost:8000
 
-export const BASE_URL: string = import.meta.env.FRONTEND_URL || "http://localhost:8000";
+export const BASE_URL: string = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 
 
