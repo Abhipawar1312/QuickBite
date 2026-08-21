@@ -44,12 +44,13 @@ describe("Orders Component", () => {
         expect(screen.getByText("₹500")).toBeInTheDocument();
     });
 
-    it("renders customer delivery note when present", async () => {
+    it("renders kitchen instructions and delivery note when present", async () => {
         (useRestaurantStore as unknown as jest.Mock).mockReturnValueOnce({
             restaurantOrder: [
                 {
                     _id: "1234567890abcdef",
                     deliveryDetails: { name: "John Doe", address: "123 Street" },
+                    restaurantNote: "Make it less spicy, extra mint chutney",
                     deliveryInstructions: "Ring bell twice, leave on porch",
                     cartItems: [{ name: "Pizza", quantity: 2 }],
                     totalAmount: 500,
@@ -64,9 +65,12 @@ describe("Orders Component", () => {
             render(<Orders />);
         });
 
-        expect(screen.getByText(/Customer Note/i)).toBeInTheDocument();
+        expect(screen.getByText(/Kitchen Instructions/i)).toBeInTheDocument();
+        expect(screen.getByText(/Make it less spicy, extra mint chutney/i)).toBeInTheDocument();
+        expect(screen.getByText(/Delivery Note/i)).toBeInTheDocument();
         expect(screen.getByText(/Ring bell twice, leave on porch/i)).toBeInTheDocument();
     });
+
 
     it("shows empty state when no orders exist", async () => {
         (useRestaurantStore as unknown as jest.Mock).mockReturnValueOnce({

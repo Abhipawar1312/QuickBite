@@ -37,7 +37,9 @@ type CheckoutSessionRequest = {
     couponCode?: string;
     discountAmount?: number;
     deliveryInstructions?: string;
+    restaurantNote?: string;
     scheduledDeliveryTime?: string;
+
 };
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -232,7 +234,9 @@ export const createCheckoutSession = async (req: Request, res: Response): Promis
             discountAmount,
             couponCode: body.couponCode || "",
             deliveryInstructions: body.deliveryInstructions || "",
+            restaurantNote: body.restaurantNote || "",
             scheduledDeliveryTime: body.scheduledDeliveryTime || "",
+
             deliveryPin,
             status: "pending",
         });

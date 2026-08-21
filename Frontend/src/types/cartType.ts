@@ -14,6 +14,7 @@ export type CartState = {
     couponCode: string;
     discountAmount: number;
     deliveryInstructions: string;
+    restaurantNote: string;
     scheduledDeliveryTime: string;
     addToCart: (item: MenuItem, restaurantId?: string, restaurantName?: string, selectedAddOns?: MenuAddOn[]) => void;
     clearCart: () => void;
@@ -27,5 +28,7 @@ export type CartState = {
     setCoupon: (code: string, discount: number) => void;
     clearCoupon: () => void;
     setDeliveryInstructions: (instructions: string) => void;
+    setRestaurantNote: (note: string) => void;
     setScheduledDeliveryTime: (time: string) => void;
-}
+}
+

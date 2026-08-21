@@ -36,11 +36,14 @@ jest.mock("@/store/useCartStore", () => ({
         couponCode: "",
         discountAmount: 0,
         deliveryInstructions: "",
+        restaurantNote: "",
         scheduledDeliveryTime: "",
         setDeliveryInstructions: jest.fn(),
+        setRestaurantNote: jest.fn(),
         setScheduledDeliveryTime: jest.fn(),
     }),
 }));
+
 
 jest.mock("@/store/useRestaurantStore", () => ({
     useRestaurantStore: () => ({
@@ -96,5 +99,23 @@ describe("CheckoutConfirmPage", () => {
 
         expect(mockCreateCheckoutSession).toHaveBeenCalled();
     });
+
+    test("renders cooking instructions input and handles chip clicks", () => {
+        render(
+            <CheckoutConfirmPage open={true} setOpen={mockSetOpen} />
+        );
+
+        expect(
+            screen.getByText(/Cooking Instructions \/ Restaurant Note/i)
+        ).toBeInTheDocument();
+
+        const lessSpicyChip = screen.getByRole("button", { name: /\+ Less spicy/i });
+        expect(lessSpicyChip).toBeInTheDocument();
+        fireEvent.click(lessSpicyChip);
+
+        const input = screen.getByPlaceholderText(/Make it less spicy, extra mint chutney/i) as HTMLInputElement;
+        expect(input.value).toContain("Less spicy");
+    });
 });
+
 

@@ -27,6 +27,7 @@ export type CheckoutSessionRequest = {
     couponCode?: string;
     discountAmount?: number;
     deliveryInstructions?: string;
+    restaurantNote?: string;
     scheduledDeliveryTime?: string;
 };
 
@@ -41,7 +42,9 @@ export interface Orders extends CheckoutSessionRequest {
     discountAmount: number;
     couponCode?: string;
     deliveryInstructions?: string;
+    restaurantNote?: string;
     scheduledDeliveryTime?: string;
+
     deliveryPin?: string;
     cancellationReason?: string;
     refundStatus?: string;

@@ -40,7 +40,9 @@ export interface IOrder extends Document {
     discountAmount: number;
     couponCode?: string;
     deliveryInstructions?: string;
+    restaurantNote?: string;
     scheduledDeliveryTime?: string;
+
     deliveryPin?: string;
     cancellationReason?: string;
     refundStatus?: "initiated" | "processed" | "not_applicable";
@@ -101,7 +103,9 @@ const OrderSchema = new Schema<IOrder>(
         discountAmount: { type: Number, default: 0 },
         couponCode: { type: String, default: "" },
         deliveryInstructions: { type: String, default: "" },
+        restaurantNote: { type: String, default: "" },
         scheduledDeliveryTime: { type: String, default: "" },
+
         deliveryPin: { type: String, default: "" },
         cancellationReason: { type: String, default: "" },
         refundStatus: {

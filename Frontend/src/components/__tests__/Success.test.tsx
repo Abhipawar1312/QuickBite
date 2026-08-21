@@ -167,12 +167,13 @@ describe("Success Component", () => {
         });
     });
 
-    test("renders delivery instructions and rider tip breakdown for confirmed order", () => {
+    test("renders delivery instructions, cooking instructions and rider tip breakdown for confirmed order", () => {
         const mockOrder = {
             _id: "order123456",
             status: "confirmed",
             totalAmount: 500,
             tipAmount: 50,
+            restaurantNote: "Make it less spicy 🌶️",
             deliveryInstructions: "Call customer on arrival at gate",
             cartItems: [
                 {
@@ -207,6 +208,10 @@ describe("Success Component", () => {
             </MemoryRouter>
         );
 
+        // Cooking instructions banner
+        expect(screen.getByText(/Restaurant Cooking Instructions/i)).toBeInTheDocument();
+        expect(screen.getByText(/Make it less spicy/i)).toBeInTheDocument();
+
         // Customer instructions banner
         expect(screen.getByText(/Your Delivery Instructions/i)).toBeInTheDocument();
         expect(screen.getByText(/Call customer on arrival at gate/i)).toBeInTheDocument();
@@ -214,6 +219,7 @@ describe("Success Component", () => {
         // Rider tip badge in breakdown
         expect(screen.getByText(/\+ ₹50 Rider Tip/i)).toBeInTheDocument();
     });
+
 
 
     test("renders Re-Order Items button for delivered order", () => {

@@ -27,7 +27,9 @@ import {
   User,
   Bike,
   XCircle,
+  ChefHat,
 } from "lucide-react";
+
 
 const STATUS_CONFIG = {
   pending: {
@@ -198,14 +200,23 @@ const Orders = () => {
                             {order.deliveryDetails.address},{" "}
                             {order.deliveryDetails.city}
                           </p>
+                          {order.restaurantNote && (
+                            <div className="mt-2.5 flex items-start gap-2.5 bg-orange-50 dark:bg-orange-950/40 p-2.5 rounded-xl border border-orange-200 dark:border-orange-800/60 text-xs text-orange-950 dark:text-orange-200 font-medium">
+                              <ChefHat className="w-4 h-4 text-orange-600 dark:text-orange-400 shrink-0 mt-0.5" />
+                              <div>
+                                <strong className="text-orange-700 dark:text-orange-400 font-bold">Kitchen Instructions:</strong> {order.restaurantNote}
+                              </div>
+                            </div>
+                          )}
                           {order.deliveryInstructions && (
                             <div className="mt-2.5 flex items-start gap-2 bg-amber-50 dark:bg-amber-950/40 p-2 rounded-lg border border-amber-200 dark:border-amber-800/60 text-xs text-amber-900 dark:text-amber-300 font-medium">
                               <span>📝</span>
-                              <span><strong>Customer Note:</strong> {order.deliveryInstructions}</span>
+                              <span><strong>Delivery Note:</strong> {order.deliveryInstructions}</span>
                             </div>
                           )}
                         </div>
                       </div>
+
 
 
                       {/* Financial Info */}

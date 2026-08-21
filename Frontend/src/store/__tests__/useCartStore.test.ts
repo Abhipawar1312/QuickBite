@@ -125,6 +125,15 @@ describe("useCartStore", () => {
     expect(item.selectedAddOns![0].quantity).toBe(2);
     expect(item.cartItemId).toContain("Red Chutneyx2");
   });
+
+  test("should set and clear restaurantNote", () => {
+    expect(useCartStore.getState().restaurantNote).toBe("");
+    useCartStore.getState().setRestaurantNote("Less spicy, extra napkins");
+    expect(useCartStore.getState().restaurantNote).toBe("Less spicy, extra napkins");
+    useCartStore.getState().clearCart();
+    expect(useCartStore.getState().restaurantNote).toBe("");
+  });
 });
+
 
 

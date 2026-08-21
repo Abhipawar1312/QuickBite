@@ -511,6 +511,19 @@ const Success = () => {
                       </div>
                     )}
 
+                    {/* Cooking Instructions / Restaurant Note */}
+                    {order.restaurantNote && (
+                      <div className="flex items-start gap-2.5 p-3.5 bg-orange-50/90 dark:bg-orange-950/40 rounded-2xl border border-orange-200 dark:border-orange-800/60 text-xs text-orange-950 dark:text-orange-200 font-medium">
+                        <span className="text-base">👨‍🍳</span>
+                        <div>
+                          <span className="font-bold block uppercase tracking-wider text-[10px] text-orange-700 dark:text-orange-400">
+                            Restaurant Cooking Instructions
+                          </span>
+                          <p className="mt-0.5 text-slate-800 dark:text-slate-200 font-semibold">{order.restaurantNote}</p>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Delivery Instructions / Customer Note */}
                     {order.deliveryInstructions && (
                       <div className="flex items-start gap-2.5 p-3.5 bg-amber-50/90 dark:bg-amber-950/40 rounded-2xl border border-amber-200 dark:border-amber-800/60 text-xs text-amber-900 dark:text-amber-200 font-medium">
@@ -523,6 +536,7 @@ const Success = () => {
                         </div>
                       </div>
                     )}
+
 
                     {/* Order Total & Fee Breakdown */}
                     <div

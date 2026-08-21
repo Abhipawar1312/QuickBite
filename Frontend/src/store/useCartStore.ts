@@ -11,6 +11,7 @@ export const useCartStore = create<CartState>()(persist((set) => ({
     couponCode: "",
     discountAmount: 0,
     deliveryInstructions: "",
+    restaurantNote: "",
     scheduledDeliveryTime: "",
 
     addToCart: (item: MenuItem, restId?: string, restName?: string, selectedAddOns?: MenuAddOn[]) => {
@@ -56,9 +57,11 @@ export const useCartStore = create<CartState>()(persist((set) => ({
             couponCode: "",
             discountAmount: 0,
             deliveryInstructions: "",
+            restaurantNote: "",
             scheduledDeliveryTime: ""
         });
     },
+
 
     removeFromTheCart: (id: string) => {
         set((state) => {
@@ -157,10 +160,15 @@ export const useCartStore = create<CartState>()(persist((set) => ({
         set({ deliveryInstructions: instructions });
     },
 
+    setRestaurantNote: (note: string) => {
+        set({ restaurantNote: note });
+    },
+
     setScheduledDeliveryTime: (time: string) => {
         set({ scheduledDeliveryTime: time });
     }
 }),
+
     {
         name: 'quickbite-cart',
         storage: createJSONStorage(() => localStorage)
