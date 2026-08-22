@@ -212,9 +212,10 @@ describe("Success Component", () => {
         expect(screen.getByText(/Restaurant Cooking Instructions/i)).toBeInTheDocument();
         expect(screen.getByText(/Make it less spicy/i)).toBeInTheDocument();
 
-        // Customer instructions banner
-        expect(screen.getByText(/Your Delivery Instructions/i)).toBeInTheDocument();
+        // Delivery instructions banner
+        expect(screen.getByText(/^Delivery Instructions$/i)).toBeInTheDocument();
         expect(screen.getByText(/Call customer on arrival at gate/i)).toBeInTheDocument();
+
 
         // Rider tip badge in breakdown
         expect(screen.getByText(/\+ ₹50 Rider Tip/i)).toBeInTheDocument();

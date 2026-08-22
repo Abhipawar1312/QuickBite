@@ -127,13 +127,15 @@ export const RiderDashboard: React.FC = () => {
       addIncomingOrder(order);
     });
 
-    socket.on("order_taken", ({ orderId }: { orderId: string }) => {
+    socket.on("order_taken", ({ orderId, acceptedBy }: { orderId: string; acceptedBy?: string }) => {
       removeIncomingOrder(orderId);
-      if (currentOffer?._id === orderId) {
+      // Only dismiss with toast if the order was taken by a DIFFERENT rider
+      if (currentOffer?._id === orderId && acceptedBy !== user?._id) {
         setCurrentOffer(null);
         toast.info("This order has been accepted by another rider.");
       }
     });
+
 
     socket.on("chat_notification", () => {
       if (!isChatOpen) {
@@ -322,9 +324,9 @@ export const RiderDashboard: React.FC = () => {
     if (success) {
       setPinModalOpen(false);
       setEnteredPin("");
-      toast.success("Order delivered successfully! Payout credited to your earnings. 🎉");
     }
   };
+
 
   if (!riderProfile) {
     return (

@@ -175,10 +175,11 @@ export const useRiderStore = create<RiderState>()(
           }
           return false;
         } catch (error: any) {
-          toast.error(error.response?.data?.message || "Failed to update workflow");
+          toast.error(error.response?.data?.message || "Failed to update delivery status");
           set({ loading: false });
           return false;
         }
+
       },
 
       getAllRidersAdmin: async () => {

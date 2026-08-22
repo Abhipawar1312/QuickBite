@@ -147,7 +147,8 @@ export const acceptOrder = async (req: Request, res: Response): Promise<void> =>
 
         // Notify other riders to remove the order from their screen
         const io = getIo();
-        io.emit("order_taken", { orderId });
+        io.emit("order_taken", { orderId, acceptedBy: userId });
+
 
         const populatedOrder = await Order.findById(order._id)
             .populate("restaurant")
@@ -246,11 +247,17 @@ export const updateDeliveryWorkflow = async (req: Request, res: Response): Promi
             io.to(`order_${order._id}`).emit("order_status_updated", populatedOrder);
         }
 
+        const successMessage = status === "reached_restaurant"
+            ? "📍 Arrived at restaurant! Order is now out for delivery."
+            : "🎉 Order delivered successfully! Payout credited to your earnings.";
+
+
         res.status(200).json({
             success: true,
-            message: "Workflow updated successfully.",
+            message: successMessage,
             order: populatedOrder || order
         });
+
     } catch (error) {
         console.error("updateDeliveryWorkflow error:", error);
         res.status(500).json({ success: false, message: "Internal server error" });

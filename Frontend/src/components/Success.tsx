@@ -524,18 +524,19 @@ const Success = () => {
                       </div>
                     )}
 
-                    {/* Delivery Instructions / Customer Note */}
+                    {/* Delivery Instructions */}
                     {order.deliveryInstructions && (
                       <div className="flex items-start gap-2.5 p-3.5 bg-amber-50/90 dark:bg-amber-950/40 rounded-2xl border border-amber-200 dark:border-amber-800/60 text-xs text-amber-900 dark:text-amber-200 font-medium">
                         <span className="text-base">📝</span>
                         <div>
                           <span className="font-bold block uppercase tracking-wider text-[10px] text-amber-700 dark:text-amber-400">
-                            Your Delivery Instructions
+                            Delivery Instructions
                           </span>
                           <p className="mt-0.5 text-slate-800 dark:text-slate-200 font-semibold">{order.deliveryInstructions}</p>
                         </div>
                       </div>
                     )}
+
 
 
                     {/* Order Total & Fee Breakdown */}
