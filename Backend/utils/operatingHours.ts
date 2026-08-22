@@ -21,9 +21,14 @@ export function isRestaurantCurrentlyOpen(restaurant: {
     if (restaurant.operatingHours?.openTime && restaurant.operatingHours?.closeTime) {
         const { openTime, closeTime } = restaurant.operatingHours;
         const now = new Date();
-        const currentHours = String(now.getHours()).padStart(2, "0");
-        const currentMinutes = String(now.getMinutes()).padStart(2, "0");
-        const currentTimeStr = `${currentHours}:${currentMinutes}`;
+        const istTimeStr = now.toLocaleTimeString("en-GB", {
+            timeZone: "Asia/Kolkata",
+            hour12: false,
+            hour: "2-digit",
+            minute: "2-digit"
+        });
+        const currentTimeStr = istTimeStr;
+
 
         // Normal operating hours within same day (e.g. 09:00 to 17:00)
         if (openTime <= closeTime) {

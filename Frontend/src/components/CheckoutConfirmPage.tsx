@@ -42,10 +42,13 @@ import type { CheckoutSessionRequest } from "@/types/orderType";
 import { useCartStore } from "@/store/useCartStore";
 import { useRestaurantStore } from "@/store/useRestaurantStore";
 import { useOrderStore } from "@/store/useOrderStore";
-import { MapAddressPicker } from "./MapAddressPicker";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "./ui/badge";
+import { MapAddressPicker } from "./MapAddressPicker";
+import { isRestaurantCurrentlyOpen } from "@/lib/operatingHours";
+
+
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;
@@ -292,7 +295,19 @@ const CheckoutConfirmPage = ({
         return;
       }
 
+      const openCheck = isRestaurantCurrentlyOpen(singleRestaurant);
+      if (!openCheck.isOpen) {
+        toast.error(`This restaurant is currently closed. ${openCheck.reason || "You cannot place orders right now."}`);
+        return;
+      }
+
+      if (singleRestaurant?.isKitchenBusy) {
+        toast.error(singleRestaurant?.rushModeMessage || "The restaurant kitchen is experiencing high demand. Orders are temporarily paused.");
+        return;
+      }
+
       setDeliveryInstructions(instructionsText);
+
       setRestaurantNote(restaurantNoteText);
       if (isScheduled) {
         setScheduledDeliveryTime(scheduledSlot);

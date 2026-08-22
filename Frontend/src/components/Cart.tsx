@@ -10,13 +10,16 @@ import {
   TableHeader,
   TableRow,
 } from "./ui/table";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+
 import { useNavigate } from "react-router-dom";
 import CheckoutConfirmPage from "./CheckoutConfirmPage";
 
 import { useCartStore } from "@/store/useCartStore";
 import { useRestaurantStore } from "@/store/useRestaurantStore";
 import { useCouponStore } from "@/store/useCouponStore";
+import { isRestaurantCurrentlyOpen } from "@/lib/operatingHours";
+
 import type { CartItem } from "@/types/cartType";
 import type { MenuAddOn } from "@/types/restaurantType";
 import { motion, AnimatePresence } from "framer-motion";
@@ -65,12 +68,24 @@ const Cart = () => {
 
 
 
-  const { singleRestaurant } = useRestaurantStore();
+  const { singleRestaurant, getRestaurant } = useRestaurantStore();
   const { activeCoupons, getActiveCoupons, applyCoupon } = useCouponStore();
+
+  useEffect(() => {
+    if (restaurantId && (!singleRestaurant || singleRestaurant._id !== restaurantId)) {
+      getRestaurant(restaurantId);
+    }
+  }, [restaurantId, singleRestaurant?._id, getRestaurant]);
+
+  const openStatus = useMemo(() => {
+    if (!singleRestaurant) return { isOpen: true };
+    return isRestaurantCurrentlyOpen(singleRestaurant);
+  }, [singleRestaurant]);
 
   useEffect(() => {
     getActiveCoupons();
   }, [getActiveCoupons]);
+
 
   const foodSubtotal = cart.reduce((acc, ele) => {
     const addOnsCost = (ele.selectedAddOns || []).reduce(
@@ -787,14 +802,40 @@ const Cart = () => {
               </span>
             </div>
 
+            {/* Restaurant Closed / Busy Warning Banner */}
+            {!openStatus.isOpen && (
+              <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-700 dark:text-red-300 font-medium flex items-center gap-2">
+                <span>🔴</span>
+                <span>This restaurant is currently closed. {openStatus.reason || "Orders cannot be placed right now."}</span>
+              </div>
+            )}
+
+            {singleRestaurant?.isKitchenBusy && (
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-700 dark:text-amber-300 font-medium flex items-center gap-2">
+                <span>👨‍🍳</span>
+                <span>{singleRestaurant.rushModeMessage || "Kitchen is in Rush Mode. Orders are temporarily paused."}</span>
+              </div>
+            )}
+
             <Button
-              onClick={() => setOpen(true)}
-              disabled={singleRestaurant?.isOpen === false}
+              onClick={() => {
+                if (!openStatus.isOpen) {
+                  toast.error(`This restaurant is currently closed. ${openStatus.reason || "Orders cannot be placed right now."}`);
+                  return;
+                }
+                if (singleRestaurant?.isKitchenBusy) {
+                  toast.error(singleRestaurant.rushModeMessage || "Kitchen is in Rush Mode. Orders are temporarily paused.");
+                  return;
+                }
+                setOpen(true);
+              }}
+              disabled={!openStatus.isOpen || !!singleRestaurant?.isKitchenBusy}
               className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white py-3.5 rounded-xl text-base font-bold shadow-lg hover:shadow-orange-500/20 transition-all duration-300 group disabled:opacity-50 disabled:cursor-not-allowed mt-2"
             >
-              {singleRestaurant?.isOpen === false ? "Restaurant Closed" : `Checkout • ₹${grandTotal}`}
+              {!openStatus.isOpen ? "Restaurant Closed" : singleRestaurant?.isKitchenBusy ? "Kitchen Busy (Paused)" : `Checkout • ₹${grandTotal}`}
               <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
             </Button>
+
           </div>
         </div>
 
