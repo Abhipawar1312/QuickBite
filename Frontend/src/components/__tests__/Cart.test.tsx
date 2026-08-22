@@ -56,7 +56,9 @@ const mockGetRestaurant = jest.fn();
     restaurant: { id: "r1", name: "Test Restaurant" },
     singleRestaurant: { isOpen: true, menus: [] },
     getRestaurant: mockGetRestaurant,
+    getSingleRestaurant: mockGetRestaurant,
 });
+
 
 (useOrderStore as unknown as jest.Mock).mockReturnValue({
     createCheckoutSession: jest.fn(),

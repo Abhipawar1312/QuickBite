@@ -68,14 +68,15 @@ const Cart = () => {
 
 
 
-  const { singleRestaurant, getRestaurant } = useRestaurantStore();
+  const { singleRestaurant, getSingleRestaurant } = useRestaurantStore();
   const { activeCoupons, getActiveCoupons, applyCoupon } = useCouponStore();
 
   useEffect(() => {
     if (restaurantId && (!singleRestaurant || singleRestaurant._id !== restaurantId)) {
-      getRestaurant(restaurantId);
+      getSingleRestaurant(restaurantId);
     }
-  }, [restaurantId, singleRestaurant?._id, getRestaurant]);
+  }, [restaurantId, singleRestaurant?._id, getSingleRestaurant]);
+
 
   const openStatus = useMemo(() => {
     if (!singleRestaurant) return { isOpen: true };
