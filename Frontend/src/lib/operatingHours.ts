@@ -37,7 +37,7 @@ export function isRestaurantCurrentlyOpen(restaurant?: {
       if (currentTimeStr < openTime || currentTimeStr >= closeTime) {
         return {
           isOpen: false,
-          reason: `Outside operating hours (${formatTimeTo12Hr(openTime)} – ${formatTimeTo12Hr(closeTime)}).`,
+          reason: `Operating hours are ${formatTimeTo12Hr(openTime)} – ${formatTimeTo12Hr(closeTime)}.`,
         };
       }
     } else {
@@ -45,10 +45,11 @@ export function isRestaurantCurrentlyOpen(restaurant?: {
       if (currentTimeStr < openTime && currentTimeStr >= closeTime) {
         return {
           isOpen: false,
-          reason: `Outside operating hours (${formatTimeTo12Hr(openTime)} – ${formatTimeTo12Hr(closeTime)}).`,
+          reason: `Operating hours are ${formatTimeTo12Hr(openTime)} – ${formatTimeTo12Hr(closeTime)}.`,
         };
       }
     }
+
   }
 
   return { isOpen: true };

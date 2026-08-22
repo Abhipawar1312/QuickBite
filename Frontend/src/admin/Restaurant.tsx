@@ -18,7 +18,8 @@ import {
   type RestaurantFormSchema,
   restaurantFromSchema,
 } from "@/schema/RestaurantSchema";
-import { isRestaurantCurrentlyOpen } from "@/lib/operatingHours";
+import { isRestaurantCurrentlyOpen, formatTimeTo12Hr } from "@/lib/operatingHours";
+
 import { useRestaurantStore } from "@/store/useRestaurantStore";
 
 import { MapAddressPicker } from "@/components/MapAddressPicker";
@@ -355,7 +356,7 @@ const Restaurant = () => {
                 if (!status.isOpen) {
                   return (
                     <Badge className="bg-red-500 text-white font-bold">
-                      ● Outside Operating Hours (Closed)
+                      ● Closed (Operating Hours: {formatTimeTo12Hr(openTime)} – {formatTimeTo12Hr(closeTime)})
                     </Badge>
                   );
                 }
