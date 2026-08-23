@@ -4,6 +4,7 @@ import Success from "../Success";
 import { useOrderStore } from "@/store/useOrderStore";
 import { useReviewStore } from "@/store/useReviewStore";
 import { useCartStore } from "@/store/useCartStore";
+import { useUserStore } from "@/store/useUserStore";
 
 const mockGetOrderDetails = jest.fn();
 const mockUpdateLocalOrderStatus = jest.fn();
@@ -11,6 +12,12 @@ const mockMarkOrderAsReviewed = jest.fn();
 const mockClearCart = jest.fn();
 const mockSetCart = jest.fn();
 const mockCreateReview = jest.fn();
+
+jest.mock("@/store/useUserStore", () => ({
+    useUserStore: jest.fn(() => ({
+        user: { fullname: "Test User", role: "customer", admin: false },
+    })),
+}));
 
 jest.mock("@/store/useOrderStore", () => ({
     useOrderStore: jest.fn(() => ({
@@ -113,7 +120,30 @@ describe("Success Component", () => {
         expect(screen.getByText("Order #123456")).toBeInTheDocument();
         expect(screen.getByText("Burgers")).toBeInTheDocument();
         expect(screen.getAllByText("500").length).toBe(2);
-        expect(screen.getAllByText(/Payment Pending/i)[0]).toBeInTheDocument();
+        expect(screen.getAllByText(/Pending Confirmation/i)[0]).toBeInTheDocument();
+        expect(screen.getByText("Total Paid")).toBeInTheDocument();
+        expect(screen.queryByText(/Total Payable \(Unpaid\)/i)).not.toBeInTheDocument();
+    });
+
+    test("renders role-aware empty state for restaurant owner", () => {
+        (useUserStore as unknown as jest.Mock).mockReturnValue({
+            user: { fullname: "Owner", role: "restaurant_owner", admin: true },
+        });
+        (useOrderStore as unknown as jest.Mock).mockReturnValue({
+            orders: [],
+            getOrderDetails: mockGetOrderDetails,
+            updateLocalOrderStatus: mockUpdateLocalOrderStatus,
+            markOrderAsReviewed: mockMarkOrderAsReviewed,
+        });
+
+        render(
+            <MemoryRouter>
+                <Success />
+            </MemoryRouter>
+        );
+
+        expect(screen.getByText("No Personal Customer Orders")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /View Restaurant Orders/i })).toBeInTheDocument();
     });
 
 

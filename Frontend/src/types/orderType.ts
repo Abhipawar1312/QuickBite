@@ -47,6 +47,7 @@ export interface Orders extends CheckoutSessionRequest {
 
     deliveryPin?: string;
     cancellationReason?: string;
+    paymentStatus?: string;
     refundStatus?: string;
     refundAmount?: number;
     rider?: any;

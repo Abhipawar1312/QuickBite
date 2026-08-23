@@ -72,6 +72,24 @@ describe("Orders Component", () => {
     });
 
 
+    it("renders Pending Confirmation badge and allows accepting the order", async () => {
+        const { fireEvent } = await import("@testing-library/react");
+        await act(async () => {
+            render(<Orders />);
+        });
+
+        expect(screen.getByText(/Pending Confirmation/i)).toBeInTheDocument();
+        expect(screen.getByText(/New Order • Awaiting Acceptance/i)).toBeInTheDocument();
+
+        const acceptBtn = screen.getByRole("button", { name: /Accept & Confirm/i });
+        expect(acceptBtn).toBeInTheDocument();
+        const rejectBtn = screen.getByRole("button", { name: /Reject/i });
+        expect(rejectBtn).toBeInTheDocument();
+
+        fireEvent.click(acceptBtn);
+        expect(mockUpdateOrder).toHaveBeenCalledWith("1234567890abcdef", "confirmed");
+    });
+
     it("shows empty state when no orders exist", async () => {
         (useRestaurantStore as unknown as jest.Mock).mockReturnValueOnce({
             restaurantOrder: [],

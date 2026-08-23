@@ -144,7 +144,10 @@ export const getRestaurantOrder = async (req: Request, res: Response): Promise<v
         }
         const orders = await Order.find({ 
             restaurant: restaurant._id,
-            status: { $ne: "pending" }
+            $or: [
+                { paymentStatus: "paid" },
+                { status: { $in: ["confirmed", "preparing", "ready_for_riders", "outfordelivery", "delivered", "Cancelled", "cancelled"] } }
+            ]
         })
             .populate('restaurant')
             .populate('user')

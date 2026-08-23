@@ -45,6 +45,7 @@ export interface IOrder extends Document {
 
     deliveryPin?: string;
     cancellationReason?: string;
+    paymentStatus?: "pending" | "paid" | "failed";
     refundStatus?: "initiated" | "processed" | "not_applicable";
     refundAmount?: number;
     refundId?: string;
@@ -108,6 +109,11 @@ const OrderSchema = new Schema<IOrder>(
 
         deliveryPin: { type: String, default: "" },
         cancellationReason: { type: String, default: "" },
+        paymentStatus: {
+            type: String,
+            enum: ["pending", "paid", "failed"],
+            default: "pending"
+        },
         refundStatus: {
             type: String,
             enum: ["initiated", "processed", "not_applicable"],

@@ -62,12 +62,14 @@ export const getOrders = async (req: Request, res: Response): Promise<void> => {
         console.log(`[getOrders] Called by userId: ${userId}, confirmSuccess: ${confirmSuccess}`);
 
         if (confirmSuccess) {
-            // Find all pending orders for this user and mark them as confirmed (as if webhook fired!)
-            const pendingOrders = await Order.find({ user: userId, status: "pending" });
-            console.log(`[getOrders] Found ${pendingOrders.length} pending orders for userId: ${userId}`);
+            // Find all pending unpaid orders for this user and mark their paymentStatus as "paid"
+            // We keep order.status as "pending" so customer sees "Pending Confirmation" and restaurant receives new order
+            const pendingOrders = await Order.find({ user: userId, paymentStatus: "pending" });
+            console.log(`[getOrders] Found ${pendingOrders.length} pending unpaid orders for userId: ${userId}`);
             for (const order of pendingOrders) {
-                console.log(`[getOrders] Confirming order ID: ${order._id}`);
-                order.status = "confirmed";
+                console.log(`[getOrders] Marking payment as paid for order ID: ${order._id}`);
+                order.paymentStatus = "paid";
+                order.status = "pending";
                 await order.save();
 
                 // Broadcast to riders and notify restaurant owner in real-time!
@@ -81,13 +83,17 @@ export const getOrders = async (req: Request, res: Response): Promise<void> => {
                 }
             }
         } else {
-            // Clean up any stale uncompleted/abandoned checkout sessions
-            await Order.deleteMany({ user: userId, status: "pending" });
+            // Clean up stale uncompleted/abandoned checkout sessions older than 30 minutes
+            const thirtyMinsAgo = new Date(Date.now() - 30 * 60 * 1000);
+            await Order.deleteMany({ user: userId, paymentStatus: "pending", createdAt: { $lt: thirtyMinsAgo } });
         }
 
         const orders = await Order.find({ 
             user: userId,
-            status: { $ne: "pending" }
+            $or: [
+                { paymentStatus: "paid" },
+                { status: { $in: ["confirmed", "preparing", "ready_for_riders", "outfordelivery", "delivered", "Cancelled", "cancelled"] } }
+            ]
         })
             .populate("user", "-password")
             .populate("restaurant")
@@ -150,12 +156,21 @@ export const createCheckoutSession = async (req: Request, res: Response): Promis
 
 
 
-        // Calculate distance
-        let distanceKM = 2.5; // Default fallback
-        const userLat = Number(body.deliveryDetails.latitude);
-        const userLng = Number(body.deliveryDetails.longitude);
+        // Ensure customer delivery coordinates exist (fallback relative to restaurant if missing)
+        let userLat = Number(body.deliveryDetails.latitude);
+        let userLng = Number(body.deliveryDetails.longitude);
         const restCoords = restaurant.location?.coordinates; // [longitude, latitude]
 
+        if ((!userLat || !userLng || isNaN(userLat) || isNaN(userLng) || userLat === 0 || userLng === 0) && restCoords && restCoords.length === 2 && restCoords[0] !== 0) {
+            // Set realistic customer coordinates near restaurant (~1.5-2km offset)
+            userLat = Number((restCoords[1] + 0.012).toFixed(6));
+            userLng = Number((restCoords[0] + 0.015).toFixed(6));
+            body.deliveryDetails.latitude = userLat;
+            body.deliveryDetails.longitude = userLng;
+        }
+
+        // Calculate distance
+        let distanceKM = 2.5; // Default fallback
         if (userLat && userLng && restCoords && restCoords.length === 2 && restCoords[0] !== 0) {
             distanceKM = calculateDistance(userLat, userLng, restCoords[1], restCoords[0]);
         }
@@ -210,7 +225,7 @@ export const createCheckoutSession = async (req: Request, res: Response): Promis
         const deliveryPin = String(Math.floor(1000 + Math.random() * 9000));
 
         // Clean up any stale uncompleted checkout attempts for this user
-        await Order.deleteMany({ user: userId, status: "pending" });
+        await Order.deleteMany({ user: userId, paymentStatus: "pending" });
 
         // 3️⃣ Create the Order document with calculated fees
         const order = new Order({
@@ -238,6 +253,7 @@ export const createCheckoutSession = async (req: Request, res: Response): Promis
             scheduledDeliveryTime: body.scheduledDeliveryTime || "",
 
             deliveryPin,
+            paymentStatus: "pending",
             status: "pending",
         });
         await order.save();
@@ -355,7 +371,10 @@ export const stripeWebhook = async (req: Request, res: Response): Promise<void> 
         if (orderId) {
             const order = await Order.findById(orderId);
             if (order) {
-                order.status = "confirmed";
+                order.paymentStatus = "paid";
+                if (!order.status || order.status === "pending") {
+                    order.status = "pending";
+                }
                 order.stripeSessionId = session.id;
                 if (session.payment_intent) {
                     order.stripePaymentIntentId = session.payment_intent as string;

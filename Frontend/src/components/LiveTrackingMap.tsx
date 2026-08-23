@@ -166,6 +166,7 @@ interface LiveTrackingMapProps {
   orderStatus?: string;
   hasRider?: boolean;
   riderVehicle?: string;
+  riderStatus?: string;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -178,23 +179,29 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
   orderStatus = "preparing",
   hasRider = false,
   riderVehicle,
+  riderStatus,
 }) => {
   const [riderPos, setRiderPos] = useState<[number, number] | null>(null);
   const [waitingRider, setWaitingRider] = useState(true);
 
   // Convert [lng, lat] → [lat, lng] for Leaflet
   const restLatLng: [number, number] = [restaurantCoords[1], restaurantCoords[0]];
-  // Safely parse — values from order.deliveryDetails may come back as strings from the backend
-  const custLatLng: [number, number] | null = customerCoords
+
+  // Guaranteed Customer Location:
+  // Safely parse coords. If missing/zeros, fallback to a realistic offset near restaurant (~1.5km)
+  // so the Customer 📍 pin is ALWAYS rendered on the map!
+  const defaultCustLat = Number((restLatLng[0] + 0.012).toFixed(6));
+  const defaultCustLng = Number((restLatLng[1] + 0.015).toFixed(6));
+
+  const custLatLng: [number, number] = (customerCoords && customerCoords[0] && customerCoords[1] && Number(customerCoords[0]) !== 0 && Number(customerCoords[1]) !== 0)
     ? [Number(customerCoords[1]), Number(customerCoords[0])]
-    : null;
+    : [defaultCustLat, defaultCustLng];
 
   // Socket: listen for real-time rider position
   useEffect(() => {
     if (!orderId) return;
     const socket = io(BASE_URL);
     socket.emit("join_order", orderId);
-
 
     socket.on("rider_location_updated", (data: { lat: number; lng: number }) => {
       setRiderPos([data.lat, data.lng]);
@@ -204,37 +211,52 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
     return () => { socket.disconnect(); };
   }, [orderId]);
 
+  // Phase logic:
+  // - Phase 1 (Accepted/Heading to Restaurant): Restaurant 🍽️ + Customer 📍 + Rider 🛵 (Live)
+  // - Phase 2 (Reached Restaurant / Out for Delivery): Rider 🛵 + Customer 📍 ONLY (Restaurant is hidden)
+  // - Phase 3 (Delivered): Customer 📍 (Delivered)
+  const normalizedStatus = (orderStatus || "").toLowerCase();
+  const isOutForDelivery = normalizedStatus === "outfordelivery" || riderStatus === "reached_restaurant";
+  const isDelivered = normalizedStatus === "delivered";
+
+  const showRestaurantMarker = !isOutForDelivery && !isDelivered;
+  const showCustomerMarker = true;
+  const showRiderMarker = !!riderPos && !isDelivered;
+
   // Dynamic ETA & Distance Logic
   const getEtaAndDistance = () => {
-    if (orderStatus === "delivered") {
-      return { eta: "Delivered", dist: "" };
+    if (normalizedStatus === "delivered") {
+      return { eta: "Delivered ✓", dist: "Enjoy your meal!" };
     }
-    if (orderStatus === "Cancelled") {
+    if (normalizedStatus === "cancelled") {
       return { eta: "Cancelled", dist: "" };
     }
 
+    if (normalizedStatus === "pending") {
+      const deliveryDistance = calculateDistance(restLatLng[0], restLatLng[1], custLatLng[0], custLatLng[1]);
+      return {
+        eta: "Awaiting Confirmation",
+        dist: `Prep + Delivery (~${deliveryDistance} KM)`
+      };
+    }
+
     // Out for delivery (rider has order, traveling to customer)
-    if (orderStatus === "outfordelivery" && riderPos && custLatLng) {
+    if (isOutForDelivery && riderPos) {
       const distance = calculateDistance(riderPos[0], riderPos[1], custLatLng[0], custLatLng[1]);
-      // Estimate 3 minutes per kilometer + 2 mins buffer
       const minutes = Math.max(2, Math.ceil(distance * 3) + 2);
       return {
         eta: `Arriving in ~${minutes} mins`,
-        dist: `${distance} KM away`
+        dist: `${distance} KM from doorstep`
       };
     }
 
     // Ready for riders / accepted (rider traveling to restaurant, or waiting for pickup)
-    if ((orderStatus === "ready_for_riders" || orderStatus === "preparing" || orderStatus === "confirmed") && riderPos) {
+    if ((normalizedStatus === "ready_for_riders" || normalizedStatus === "preparing" || normalizedStatus === "confirmed") && riderPos) {
       const distanceToRest = calculateDistance(riderPos[0], riderPos[1], restLatLng[0], restLatLng[1]);
       const pickupMins = Math.max(2, Math.ceil(distanceToRest * 3) + 2);
-      
-      let deliveryDistance = 2.5; // fallback
-      if (custLatLng) {
-        deliveryDistance = calculateDistance(restLatLng[0], restLatLng[1], custLatLng[0], custLatLng[1]);
-      }
+      const deliveryDistance = calculateDistance(restLatLng[0], restLatLng[1], custLatLng[0], custLatLng[1]);
       const deliveryMins = Math.ceil(deliveryDistance * 3) + 2;
-      const totalMins = pickupMins + deliveryMins + (orderStatus === "preparing" ? 15 : 5);
+      const totalMins = pickupMins + deliveryMins + (normalizedStatus === "preparing" ? 15 : 5);
 
       return {
         eta: `Estimated delivery: ~${totalMins} mins`,
@@ -243,11 +265,8 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
     }
 
     // Default static fallback when no rider is sharing location yet
-    let fallbackDistance = 2.5;
-    if (custLatLng) {
-      fallbackDistance = calculateDistance(restLatLng[0], restLatLng[1], custLatLng[0], custLatLng[1]);
-    }
-    const prepBuffer = orderStatus === "preparing" ? 25 : 15;
+    const fallbackDistance = calculateDistance(restLatLng[0], restLatLng[1], custLatLng[0], custLatLng[1]);
+    const prepBuffer = normalizedStatus === "preparing" ? 25 : 15;
     const totalFallbackMins = Math.ceil(fallbackDistance * 3) + prepBuffer;
 
     return {
@@ -262,24 +281,17 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
   const restaurantIcon = makeRestaurantIcon();
   const customerIcon = makeCustomerIcon();
 
-  // Map center: midpoint between restaurant and customer (best overview), else rider or restaurant
-  const mapCenter: [number, number] = custLatLng
-    ? [(restLatLng[0] + custLatLng[0]) / 2, (restLatLng[1] + custLatLng[1]) / 2]
-    : riderPos ?? restLatLng;
+  // Map center:
+  // When Out for Delivery: midpoint between Rider and Customer
+  // When Heading to Restaurant: midpoint between Restaurant and Customer
+  const mapCenter: [number, number] = isOutForDelivery && riderPos
+    ? [(riderPos[0] + custLatLng[0]) / 2, (riderPos[1] + custLatLng[1]) / 2]
+    : [(restLatLng[0] + custLatLng[0]) / 2, (restLatLng[1] + custLatLng[1]) / 2];
 
-  // Live route: restaurant → rider → customer
-  const routePoints: [number, number][] = [
-    restLatLng,
-    ...(riderPos ? [riderPos] : []),
-    ...(custLatLng ? [custLatLng] : []),
-  ];
-
-  // Bounds for auto-fit
-  const fitPositions: [number, number][] = [
-    restLatLng,
-    ...(riderPos ? [riderPos] : []),
-    ...(custLatLng ? [custLatLng] : []),
-  ];
+  // Bounds for auto-fit based on current phase
+  const fitPositions: [number, number][] = isOutForDelivery
+    ? [...(riderPos ? [riderPos] : []), custLatLng]
+    : [restLatLng, ...(riderPos ? [riderPos] : []), custLatLng];
 
   const getStatusBadge = () => {
     const s = (orderStatus || "").toLowerCase();
@@ -288,10 +300,10 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
     if (s === "ready_for_riders") return { label: hasRider ? "🛵 Rider Assigned" : "🕐 Finding Rider", cls: "bg-purple-500 text-white" };
     if (s === "preparing") return { label: "👨‍🍳 Preparing", cls: "bg-blue-500 text-white" };
     if (s === "confirmed") return { label: "✓ Confirmed", cls: "bg-emerald-500 text-white" };
+    if (s === "pending") return { label: "⏳ Pending Confirmation", cls: "bg-amber-500 text-white" };
     if (s === "cancelled") return { label: "✕ Cancelled", cls: "bg-red-500 text-white" };
-    return { label: s ? s.charAt(0).toUpperCase() + s.slice(1) : "Confirmed", cls: "bg-emerald-500 text-white" };
+    return { label: s ? s.charAt(0).toUpperCase() + s.slice(1) : "Pending", cls: "bg-amber-500 text-white" };
   };
-
 
   const statusBadge = getStatusBadge();
 
@@ -331,9 +343,29 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
       <CardContent className="p-0 relative">
         {/* Map Legend */}
         <div className="flex flex-wrap items-center gap-4 px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-400">
-          <span className="flex items-center gap-1.5"><span className="text-base">🍽️</span><span className="font-semibold">{restaurantName || "Restaurant"}</span></span>
-          {custLatLng && <span className="flex items-center gap-1.5"><span className="text-base">📍</span><span className="font-semibold">{customerName}</span></span>}
-          {riderPos && <span className="flex items-center gap-1.5"><span className="text-base">🛵</span><span className="font-semibold">Rider (Live)</span></span>}
+          {showRestaurantMarker && (
+            <span className="flex items-center gap-1.5">
+              <span className="text-base">🍽️</span>
+              <span className="font-semibold">{restaurantName || "Restaurant"}</span>
+            </span>
+          )}
+          {showCustomerMarker && (
+            <span className="flex items-center gap-1.5">
+              <span className="text-base">📍</span>
+              <span className="font-semibold">{customerName || "Customer"}</span>
+            </span>
+          )}
+          {showRiderMarker && (
+            <span className="flex items-center gap-1.5">
+              <span className="text-base">🛵</span>
+              <span className="font-semibold">Rider (Live)</span>
+            </span>
+          )}
+          {isOutForDelivery && (
+            <span className="text-[11px] text-orange-600 dark:text-orange-400 font-bold bg-orange-100 dark:bg-orange-950/40 px-2.5 py-0.5 rounded-full ml-auto">
+              ✓ Food Picked Up • Heading to Customer
+            </span>
+          )}
         </div>
 
         {/* Real Leaflet Map */}
@@ -345,7 +377,6 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
             zoomControl={false}
             scrollWheelZoom={true}
           >
-
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -357,42 +388,59 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
             {/* Custom Zoom Controls */}
             <ZoomControls fitPositions={fitPositions} />
 
-            {/* Restaurant marker */}
-            <Marker position={restLatLng} icon={restaurantIcon}>
-              <Popup>
-                <div style={{ fontWeight: "bold", fontSize: "13px" }}>{restaurantName} 🍽️</div>
-                <div style={{ fontSize: "11px", color: "#888" }}>Restaurant location</div>
-              </Popup>
-            </Marker>
-
-            {/* Customer marker — always shown when coords are available */}
-            {custLatLng && (
-              <Marker position={custLatLng} icon={customerIcon}>
+            {/* Restaurant marker - visible in Phase 1 (pickup), hidden in Phase 2 (out for delivery) */}
+            {showRestaurantMarker && (
+              <Marker position={restLatLng} icon={restaurantIcon}>
                 <Popup>
-                  <div style={{ fontWeight: "bold", fontSize: "13px" }}>{customerName} 📍</div>
-                  <div style={{ fontSize: "11px", color: "#888" }}>Your delivery address</div>
+                  <div style={{ fontWeight: "bold", fontSize: "13px" }}>{restaurantName} 🍽️</div>
+                  <div style={{ fontSize: "11px", color: "#888" }}>Restaurant pickup location</div>
                 </Popup>
               </Marker>
             )}
 
-            {/* Static dashed path: restaurant → customer (always visible) */}
-            {custLatLng && (
+            {/* Customer marker — always visible with valid coordinates */}
+            {showCustomerMarker && (
+              <Marker position={custLatLng} icon={customerIcon}>
+                <Popup>
+                  <div style={{ fontWeight: "bold", fontSize: "13px" }}>{customerName} 📍</div>
+                  <div style={{ fontSize: "11px", color: "#888" }}>Customer delivery destination</div>
+                </Popup>
+              </Marker>
+            )}
+
+            {/* Path routing logic: */}
+            {/* 1. Out for delivery: Active polyline directly from Rider to Customer */}
+            {isOutForDelivery && riderPos && (
+              <Polyline
+                positions={[riderPos, custLatLng]}
+                pathOptions={{ color: "#f97316", weight: 4.5, opacity: 0.9, dashArray: "9 7" }}
+              />
+            )}
+
+            {/* 2. Rider heading to restaurant: Polyline from Rider to Restaurant, and dashed path to Customer */}
+            {!isOutForDelivery && riderPos && (
+              <>
+                <Polyline
+                  positions={[riderPos, restLatLng]}
+                  pathOptions={{ color: "#f97316", weight: 4.5, opacity: 0.9, dashArray: "9 7" }}
+                />
+                <Polyline
+                  positions={[restLatLng, custLatLng]}
+                  pathOptions={{ color: "#94a3b8", weight: 3, opacity: 0.55, dashArray: "6 6" }}
+                />
+              </>
+            )}
+
+            {/* 3. Static overview (before rider assigned): dashed path from restaurant to customer */}
+            {!riderPos && (
               <Polyline
                 positions={[restLatLng, custLatLng]}
                 pathOptions={{ color: "#94a3b8", weight: 3, opacity: 0.55, dashArray: "6 6" }}
               />
             )}
 
-            {/* Live rider route overlay */}
-            {riderPos && routePoints.length >= 2 && (
-              <Polyline
-                positions={routePoints}
-                pathOptions={{ color: "#f97316", weight: 4.5, opacity: 0.9, dashArray: "9 7" }}
-              />
-            )}
-
             {/* Moving vehicle marker */}
-            {riderPos && (
+            {showRiderMarker && riderPos && (
               <SmoothMarker
                 position={riderPos}
                 icon={vehicleIcon}
@@ -409,10 +457,12 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-orange-100 dark:bg-orange-950/40 rounded-xl flex items-center justify-center text-xl shrink-0">
-                ⏰
+                {normalizedStatus === "pending" ? "⏳" : "⏰"}
               </div>
               <div>
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Estimated Delivery</p>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                  {normalizedStatus === "pending" ? "Order Status" : "Estimated Delivery"}
+                </p>
                 <h4 className="text-sm font-extrabold text-slate-800 dark:text-white">
                   {etaText}
                 </h4>
@@ -427,7 +477,7 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
           </motion.div>
 
           {/* Waiting overlay */}
-          {waitingRider && hasRider && (
+          {waitingRider && hasRider && !isDelivered && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -440,7 +490,7 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
             </motion.div>
           )}
 
-          {!hasRider && (
+          {!hasRider && !isDelivered && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -449,14 +499,13 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
               <Package className="w-4 h-4 text-blue-500 shrink-0" />
               <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">
                 {(() => {
-                  const normalized = orderStatus?.toLowerCase()?.trim() || "";
-                  if (normalized === "confirmed") {
+                  if (normalizedStatus === "confirmed") {
                     return "Order confirmed! Kitchen will start preparation soon 👨‍🍳";
                   }
-                  if (normalized === "preparing") {
+                  if (normalizedStatus === "preparing") {
                     return "Your food is being prepared in the kitchen 🍳";
                   }
-                  if (normalized === "pending") {
+                  if (normalizedStatus === "pending") {
                     return "Order placed! Awaiting restaurant confirmation ⏳";
                   }
                   return "Waiting for a rider to accept your order… 🛵";
@@ -468,7 +517,7 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
         </div>
 
         {/* Live Status Footer */}
-        {riderPos && (
+        {riderPos && !isDelivered && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -478,7 +527,7 @@ export const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
               <p className="text-[10px] text-green-600 dark:text-green-400 font-bold uppercase tracking-wider">Live Tracking</p>
               <p className="text-sm font-extrabold text-slate-800 dark:text-white flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-ping inline-block" />
-                Rider is on the move!
+                {isOutForDelivery ? "Rider is heading to your delivery location!" : "Rider is heading to the restaurant!"}
               </p>
             </div>
             {riderVehicle && (

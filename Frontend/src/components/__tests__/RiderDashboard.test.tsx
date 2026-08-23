@@ -151,4 +151,15 @@ describe("RiderDashboard Component", () => {
     expect(screen.getByText(/Customer Delivery Note/i)).toBeInTheDocument();
     expect(screen.getByText(/Leave with security guard at gate/i)).toBeInTheDocument();
   });
+
+  test("renders LiveTrackingMap for active delivery with workflow action button", () => {
+    render(
+      <BrowserRouter>
+        <RiderDashboard />
+      </BrowserRouter>
+    );
+
+    expect(screen.getByTestId("live-tracking-map")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Reached Restaurant/i })).toBeInTheDocument();
+  });
 });

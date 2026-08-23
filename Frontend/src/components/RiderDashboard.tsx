@@ -785,7 +785,9 @@ export const RiderDashboard: React.FC = () => {
                     restaurantName={activeOrder.restaurant?.restaurantName}
                     customerName={activeOrder.deliveryDetails?.name || "Customer"}
                     orderStatus={activeOrder.status}
+                    riderStatus={activeOrder.riderStatus}
                     hasRider={true}
+                    riderVehicle={riderProfile?.vehicleName}
                   />
                 </div>
 

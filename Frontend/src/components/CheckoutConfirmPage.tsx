@@ -132,15 +132,18 @@ const CheckoutConfirmPage = ({
 
   useEffect(() => {
     if (user) {
+      const defaultAddr = user.savedAddresses?.find((a: any) => a.isDefault) || user.savedAddresses?.[0];
       setInput((prev) => ({
         ...prev,
         name: user.fullname || prev.name,
         email: user.email || prev.email,
         contact: user.contact ? user.contact.toString() : prev.contact,
-        address: user.address || prev.address,
-        city: user.city || prev.city,
+        address: defaultAddr?.address || user.address || prev.address,
+        city: defaultAddr?.city || user.city || prev.city,
         country: user.country || prev.country,
-        pincode: user.pincode || prev.pincode,
+        pincode: defaultAddr?.pincode || user.pincode || prev.pincode,
+        latitude: defaultAddr?.latitude ?? prev.latitude,
+        longitude: defaultAddr?.longitude ?? prev.longitude,
       }));
     }
   }, [
@@ -151,6 +154,7 @@ const CheckoutConfirmPage = ({
     user?.city,
     user?.country,
     user?.pincode,
+    user?.savedAddresses,
   ]);
 
 
@@ -313,6 +317,14 @@ const CheckoutConfirmPage = ({
         setScheduledDeliveryTime(scheduledSlot);
       }
 
+      let finalLat = input.latitude;
+      let finalLng = input.longitude;
+      const restCoords = singleRestaurant?.location?.coordinates;
+      if ((!finalLat || !finalLng || isNaN(finalLat) || isNaN(finalLng)) && restCoords && restCoords.length === 2 && restCoords[0] !== 0) {
+        finalLat = Number((restCoords[1] + 0.012).toFixed(6));
+        finalLng = Number((restCoords[0] + 0.015).toFixed(6));
+      }
+
       const checkoutData: CheckoutSessionRequest = {
         cartItems: cart.map((cartItem) => ({
           menuId: cartItem._id,
@@ -322,7 +334,11 @@ const CheckoutConfirmPage = ({
           quantity: cartItem.quantity.toString(),
           selectedAddOns: cartItem.selectedAddOns || [],
         })),
-        deliveryDetails: input,
+        deliveryDetails: {
+          ...input,
+          latitude: finalLat,
+          longitude: finalLng,
+        },
         restaurantId,
         tipAmount,
         couponCode,

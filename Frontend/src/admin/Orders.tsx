@@ -264,9 +264,36 @@ const Orders = () => {
                           className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border font-semibold text-sm ${statusConfig.color}`}
                         >
                           <StatusIcon className="w-4 h-4" />
-                          <span className="capitalize">{normalizedStatus.replace(/_/g, " ")}</span>
+                          <span className="capitalize">{normalizedStatus === "pending" ? "Pending Confirmation" : normalizedStatus.replace(/_/g, " ")}</span>
                         </div>
                       </div>
+
+                      {/* Quick Accept / Reject Action for Pending Orders */}
+                      {normalizedStatus === "pending" && (
+                        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-3.5 space-y-2.5 shadow-xs">
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300">
+                            <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping shrink-0" />
+                            New Order • Awaiting Acceptance
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleStatusChange(order._id, "confirmed")}
+                              className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold text-xs rounded-lg py-2 shadow"
+                            >
+                              ✓ Accept & Confirm
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleStatusChange(order._id, "cancelled")}
+                              className="border-red-300 text-red-600 hover:bg-red-50 text-xs font-bold rounded-lg py-2"
+                            >
+                              ✕ Reject
+                            </Button>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Status Selector */}
                       <div className="space-y-2">

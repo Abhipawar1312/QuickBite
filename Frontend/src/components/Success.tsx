@@ -191,6 +191,9 @@ const Success = () => {
 
 
 
+  const isRestaurantOwner = !!user?.admin || user?.role === "restaurant_owner";
+  const isRider = user?.role === "rider";
+
   if (orders.length === 0) {
     return (
       <motion.div
@@ -204,7 +207,13 @@ const Success = () => {
           transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
           className="w-32 h-32 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center mb-8"
         >
-          <Package className="w-16 h-16 text-orange-500" />
+          {isRestaurantOwner ? (
+            <span className="text-5xl">🍽️</span>
+          ) : isRider ? (
+            <span className="text-5xl">🛵</span>
+          ) : (
+            <Package className="w-16 h-16 text-orange-500" />
+          )}
         </motion.div>
         <motion.h1
           initial={{ opacity: 0, y: 10 }}
@@ -212,26 +221,56 @@ const Success = () => {
           transition={{ delay: 0.4 }}
           className="text-3xl font-bold text-slate-900 dark:text-white mb-4"
         >
-          No orders found
+          {isRestaurantOwner
+            ? "No Personal Customer Orders"
+            : isRider
+            ? "No Personal Orders"
+            : "No orders found"}
         </motion.h1>
         <motion.p
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
-          className="text-slate-600 dark:text-slate-400 text-center mb-8"
+          className="text-slate-600 dark:text-slate-400 text-center max-w-md mb-8 leading-relaxed"
         >
-          You haven't placed any orders yet. Start exploring our delicious menu!
+          {isRestaurantOwner
+            ? "You are logged in as a Restaurant Owner. You haven't placed any personal food orders with this account. To manage incoming orders for your restaurant, visit your Restaurant Orders dashboard."
+            : isRider
+            ? "You are logged in as a Delivery Partner. Head over to your Rider Dashboard to manage live delivery tasks and incoming order offers."
+            : "You haven't placed any orders yet. Start exploring our delicious menu!"}
         </motion.p>
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.8 }}
+          className="flex flex-col sm:flex-row gap-3 items-center"
         >
-          <Link to="/">
-            <Button className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-8 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all duration-300">
-              Start Ordering Food
-            </Button>
-          </Link>
+          {isRestaurantOwner ? (
+            <>
+              <Link to="/admin/orders">
+                <Button className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-8 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all duration-300">
+                  🍽️ View Restaurant Orders
+                </Button>
+              </Link>
+              <Link to="/">
+                <Button variant="outline" className="border-slate-300 dark:border-slate-600 rounded-full px-6 py-3 font-semibold">
+                  Browse Menu
+                </Button>
+              </Link>
+            </>
+          ) : isRider ? (
+            <Link to="/rider/dashboard">
+              <Button className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-8 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all duration-300">
+                🛵 Go to Rider Dashboard
+              </Button>
+            </Link>
+          ) : (
+            <Link to="/">
+              <Button className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-8 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all duration-300">
+                Start Ordering Food
+              </Button>
+            </Link>
+          )}
         </motion.div>
       </motion.div>
     );
@@ -252,11 +291,25 @@ const Success = () => {
         className="text-center mb-12"
       >
         <h1 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-4">
-          Your Orders
+          {isRestaurantOwner ? "Your Personal Orders" : "Your Orders"}
         </h1>
         <p className="text-lg text-slate-600 dark:text-slate-400">
           Track your delicious orders and their delivery status
         </p>
+
+        {isRestaurantOwner && (
+          <div className="mt-4 max-w-xl mx-auto bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-800 rounded-2xl p-3.5 text-xs text-orange-900 dark:text-orange-200 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+            <span className="flex items-center gap-2 font-medium">
+              <span className="text-base">🍽️</span>
+              <span>Looking for orders placed by customers at your restaurant?</span>
+            </span>
+            <Link to="/admin/orders">
+              <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs rounded-xl px-4 py-2 h-auto shadow shrink-0">
+                View Restaurant Orders →
+              </Button>
+            </Link>
+          </div>
+        )}
       </motion.div>
 
       <div className="max-w-4xl mx-auto">
@@ -318,7 +371,7 @@ const Success = () => {
                               </span>
                             ) : isPending ? (
                               <span className="text-[10px] uppercase font-extrabold tracking-wider bg-amber-200 text-amber-950 px-2.5 py-0.5 rounded-full shadow">
-                                ⏳ Payment Pending
+                                ⏳ Pending Confirmation
                               </span>
                             ) : (
                               <span className="text-[10px] uppercase font-extrabold tracking-wider bg-amber-400 text-slate-950 px-2.5 py-0.5 rounded-full animate-pulse">
@@ -335,7 +388,7 @@ const Success = () => {
                           className={`flex items-center gap-2 px-4 py-2 rounded-full ${statusConfig.bg} ${statusConfig.text} font-semibold capitalize shadow-lg`}
                         >
                           <StatusIcon className="w-4 h-4" />
-                          {isCancelled ? "Cancelled" : isPending ? "Payment Pending" : status.replace(/_/g, " ")}
+                          {isCancelled ? "Cancelled" : isPending ? "Pending Confirmation" : status.replace(/_/g, " ")}
                         </motion.div>
                       </div>
                     </div>
@@ -409,8 +462,8 @@ const Success = () => {
                       })}
                     </div>
 
-                    {/* 4-Digit Delivery Verification PIN Banner - only for confirmed live active orders */}
-                    {order.deliveryPin && !isDelivered && !isCancelled && !isPending && (
+                    {/* 4-Digit Delivery Verification PIN Banner - for active orders */}
+                    {order.deliveryPin && !isDelivered && !isCancelled && (
                       <div className="mb-4 mt-4 p-4 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 dark:from-amber-500/20 dark:to-orange-500/20 rounded-2xl border-2 border-dashed border-orange-400 dark:border-orange-500 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
                         <div className="flex items-center gap-3.5">
                           <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-400 text-white flex items-center justify-center font-bold text-xl shadow-md ring-2 ring-orange-200 dark:ring-orange-900">
@@ -438,7 +491,7 @@ const Success = () => {
                       </div>
                     )}
 
-                    {/* Pending State Notice */}
+                    {/* Pending Confirmation State Notice */}
                     {isPending && (
                       <div className="mb-4 mt-4 p-4 bg-amber-50/90 dark:bg-amber-950/30 rounded-2xl border-2 border-dashed border-amber-300 dark:border-amber-800 flex flex-col sm:flex-row items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
@@ -447,19 +500,16 @@ const Success = () => {
                           </div>
                           <div>
                             <span className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
-                              Payment Incomplete / Awaiting Checkout
+                              Order Placed • Awaiting Restaurant Confirmation
                             </span>
                             <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                              You exited before completing payment on Stripe. The restaurant will only receive and prepare your food once payment succeeds.
+                              The restaurant has received your order and will confirm it shortly. Live tracking will begin as soon as preparation starts.
                             </p>
                           </div>
                         </div>
-                        <Button
-                          onClick={() => handleReorder(order)}
-                          className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs rounded-xl px-4 py-2 shadow shrink-0"
-                        >
-                          🔄 Retry Checkout
-                        </Button>
+                        <span className="bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 text-xs font-bold px-3 py-1.5 rounded-full border border-amber-200 dark:border-amber-700 shrink-0">
+                          Payment Complete ✓
+                        </span>
                       </div>
                     )}
 
@@ -581,16 +631,6 @@ const Success = () => {
                               </p>
                             </div>
                           </>
-                        ) : isPending ? (
-                          <>
-                            <p className="text-lg font-bold text-slate-900 dark:text-white">
-                              Total Payable (Unpaid)
-                            </p>
-                            <p className="flex items-center text-2xl font-bold text-amber-600 dark:text-amber-400">
-                              <IndianRupee className="w-6 h-6 mr-1" />
-                              {totalAmount}
-                            </p>
-                          </>
                         ) : (
                           <>
                             <p className="text-lg font-bold text-slate-900 dark:text-white">
@@ -637,7 +677,7 @@ const Success = () => {
                     )}
 
                     {/* Live Tracking Map Widget */}
-                    {!isCancelled && !isPending && (status === "confirmed" || status === "preparing" || status === "ready_for_riders" || status === "outfordelivery") && (
+                    {!isCancelled && !isDelivered && (
                       <div className="mt-6">
                         <LiveTrackingMap
                           orderId={order._id}
@@ -650,6 +690,7 @@ const Success = () => {
                           restaurantName={order.restaurant?.restaurantName}
                           customerName={order.deliveryDetails?.name || "You"}
                           orderStatus={status}
+                          riderStatus={order.riderStatus}
                           hasRider={!!order.rider}
                           riderVehicle={(order as any).riderVehicle}
                         />

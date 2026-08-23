@@ -116,6 +116,29 @@ describe("CheckoutConfirmPage", () => {
         const input = screen.getByPlaceholderText(/Make it less spicy, extra mint chutney/i) as HTMLInputElement;
         expect(input.value).toContain("Less spicy");
     });
+
+    test("attaches fallback coordinates relative to restaurant when coordinates not chosen", () => {
+        render(
+            <CheckoutConfirmPage open={true} setOpen={mockSetOpen} />
+        );
+
+        fireEvent.change(screen.getByPlaceholderText(/pincode/i), {
+            target: { value: "400070", name: "pincode" },
+        });
+
+        fireEvent.click(
+            screen.getByRole("button", { name: /proceed to payment/i })
+        );
+
+        expect(mockCreateCheckoutSession).toHaveBeenCalledWith(
+            expect.objectContaining({
+                deliveryDetails: expect.objectContaining({
+                    name: "Abhi",
+                    pincode: "400070",
+                }),
+            })
+        );
+    });
 });
 
 

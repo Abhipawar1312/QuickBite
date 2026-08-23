@@ -122,6 +122,40 @@ describe("LiveTrackingMap", () => {
     );
 
     expect(screen.getByText(/Order placed! Awaiting restaurant confirmation/i)).toBeInTheDocument();
+    expect(screen.getByText("⏳ Pending Confirmation")).toBeInTheDocument();
+  });
+
+  test("hides restaurant marker when out for delivery and shows pickup tag", () => {
+    render(
+      <LiveTrackingMap
+        orderId="test-order-id"
+        restaurantCoords={[72.8777, 19.076]}
+        customerCoords={[72.8888, 19.088]}
+        restaurantName="Bukhara"
+        customerName="Abhi"
+        orderStatus="outfordelivery"
+      />
+    );
+
+    expect(screen.queryByText("Bukhara")).not.toBeInTheDocument();
+    expect(screen.getByText("Abhi")).toBeInTheDocument();
+    expect(screen.getByText(/Food Picked Up • Heading to Customer/i)).toBeInTheDocument();
+  });
+
+  test("uses fallback coordinates when customerCoords are not provided", () => {
+    render(
+      <LiveTrackingMap
+        orderId="test-order-id"
+        restaurantCoords={[72.8777, 19.076]}
+        restaurantName="Bukhara"
+        customerName="Abhi"
+        orderStatus="preparing"
+      />
+    );
+
+    expect(screen.getByText("Abhi")).toBeInTheDocument();
+    expect(screen.getByText("Bukhara")).toBeInTheDocument();
+    expect(screen.getByTestId("map-container")).toBeInTheDocument();
   });
 });
 
