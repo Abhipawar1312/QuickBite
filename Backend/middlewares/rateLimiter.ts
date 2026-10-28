@@ -162,7 +162,23 @@ export const checkoutLimiter = createRateLimiter(
   "Checkout request limit exceeded. Please wait a moment before proceeding."
 );
 
-// 4. General API Limiter: 200 requests per minute
+// 4. Review Shield: 10 reviews per 10 minutes
+export const reviewLimiter = createRateLimiter(
+  "review",
+  10 * 60 * 1000,
+  10,
+  "Too many review submissions. Please wait before submitting more reviews."
+);
+
+// 5. GPS Telemetry Shield: 60 pings per minute (prevents GPS flooding from client sockets/APIs)
+export const locationLimiter = createRateLimiter(
+  "location",
+  60 * 1000,
+  60,
+  "GPS location update rate exceeded. Throttling pings."
+);
+
+// 6. General API Limiter: 200 requests per minute
 export const generalApiLimiter = createRateLimiter(
   "general",
   60 * 1000,

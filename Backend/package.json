@@ -5,7 +5,7 @@
   "main": "Backend/index.js",
   "scripts": {
     "dev": "nodemon index.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "ts-node --transpile-only __tests__/runAllTests.ts"
   },
   "keywords": [],
   "author": "",

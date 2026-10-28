@@ -27,6 +27,7 @@ export interface ICartItem {
 }
 
 export interface IOrder extends Document {
+    _id: mongoose.Types.ObjectId;
     user: mongoose.Types.ObjectId;
     restaurant: mongoose.Types.ObjectId;
     deliveryDetails: IDeliveryDetails;

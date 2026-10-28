@@ -42,18 +42,8 @@ type CheckoutSessionRequest = {
 
 };
 
-function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const R = 6371; // Radius of the Earth in km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c; // Distance in km
-    return Number(distance.toFixed(1));
-}
+import { calculateHaversineDistance, isValidCoordinate } from "../utils/geo";
+import { cache } from "../utils/cache";
 
 export const getOrders = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -62,24 +52,42 @@ export const getOrders = async (req: Request, res: Response): Promise<void> => {
         console.log(`[getOrders] Called by userId: ${userId}, confirmSuccess: ${confirmSuccess}`);
 
         if (confirmSuccess) {
-            // Find all pending unpaid orders for this user and mark their paymentStatus as "paid"
-            // We keep order.status as "pending" so customer sees "Pending Confirmation" and restaurant receives new order
+            // Find pending unpaid orders for this user and verify Stripe session before marking paid
             const pendingOrders = await Order.find({ user: userId, paymentStatus: "pending" });
-            console.log(`[getOrders] Found ${pendingOrders.length} pending unpaid orders for userId: ${userId}`);
+            console.log(`[getOrders] Checking ${pendingOrders.length} pending orders for Stripe confirmation`);
+            
             for (const order of pendingOrders) {
-                console.log(`[getOrders] Marking payment as paid for order ID: ${order._id}`);
-                order.paymentStatus = "paid";
-                order.status = "pending";
-                await order.save();
+                let isConfirmedPaid = false;
 
-                // Broadcast to riders and notify restaurant owner in real-time!
-                const populatedOrder = await Order.findById(order._id)
-                    .populate("restaurant")
-                    .populate("user", "-password");
-                if (populatedOrder) {
-                    const restaurantUserId = (populatedOrder.restaurant as any).user.toString();
-                    sendNotification(restaurantUserId, "new_restaurant_order", populatedOrder);
-                    console.log(`[getOrders] Broadcasted new_restaurant_order to restaurant owner: ${restaurantUserId}`);
+                // Server-side verification with Stripe
+                if (order.stripeSessionId) {
+                    try {
+                        const session = await stripe.checkout.sessions.retrieve(order.stripeSessionId);
+                        if (session.payment_status === "paid") {
+                            isConfirmedPaid = true;
+                            if (session.payment_intent) {
+                                order.stripePaymentIntentId = session.payment_intent as string;
+                            }
+                        }
+                    } catch (stripeErr: any) {
+                        console.warn(`[getOrders] Stripe retrieve notice for session ${order.stripeSessionId}:`, stripeErr.message);
+                    }
+                }
+
+                if (isConfirmedPaid) {
+                    console.log(`[getOrders] Verified payment for order ID: ${order._id}`);
+                    order.paymentStatus = "paid";
+                    order.status = "pending";
+                    await order.save();
+
+                    // Broadcast to restaurant owner in real-time!
+                    const populatedOrder = await Order.findById(order._id)
+                        .populate("restaurant")
+                        .populate("user", "-password");
+                    if (populatedOrder) {
+                        const restaurantUserId = (populatedOrder.restaurant as any).user.toString();
+                        sendNotification(restaurantUserId, "new_restaurant_order", populatedOrder);
+                    }
                 }
             }
         } else {
@@ -169,10 +177,14 @@ export const createCheckoutSession = async (req: Request, res: Response): Promis
             body.deliveryDetails.longitude = userLng;
         }
 
-        // Calculate distance
+        // Calculate distance using centralized Haversine geodesic engine
         let distanceKM = 2.5; // Default fallback
         if (userLat && userLng && restCoords && restCoords.length === 2 && restCoords[0] !== 0) {
-            distanceKM = calculateDistance(userLat, userLng, restCoords[1], restCoords[0]);
+            try {
+                distanceKM = calculateHaversineDistance(userLat, userLng, restCoords[1], restCoords[0], "km");
+            } catch {
+                distanceKM = 2.5;
+            }
         }
 
         // Delivery Fee logic: Free within 2KM, standard rate, higher for long range
@@ -364,6 +376,16 @@ export const stripeWebhook = async (req: Request, res: Response): Promise<void> 
         res.status(400).send(`Webhook Error: ${err.message}`);
         return;
     }
+
+    // Webhook Idempotency: Deduplicate by Stripe Event ID
+    const eventIdKey = `webhook:stripe:event:${event.id}`;
+    const alreadyHandled = await cache.get(eventIdKey);
+    if (alreadyHandled) {
+        console.log(`[stripeWebhook] Duplicate webhook event ignored: ${event.id}`);
+        res.status(200).send("Received (already processed)");
+        return;
+    }
+    await cache.set(eventIdKey, true, 86400); // 24-hour deduplication window
 
     if (event.type === "checkout.session.completed") {
         const session = event.data.object as Stripe.Checkout.Session;

@@ -8,6 +8,9 @@ export const onlineRiders = new Map<string, string>();
 // Map to keep track of all active users: userId -> socketId
 export const activeUsers = new Map<string, string>();
 
+import jwt from "jsonwebtoken";
+import { isValidCoordinate } from "./geo";
+
 export const initializeSocket = (server: http.Server) => {
     io = new Server(server, {
         cors: {
@@ -17,8 +20,32 @@ export const initializeSocket = (server: http.Server) => {
         }
     });
 
+    // Socket Authentication Middleware
+    io.use((socket: Socket, next) => {
+        const token =
+            (socket.handshake.auth?.token as string) ||
+            socket.handshake.headers.cookie
+                ?.split("; ")
+                .find((row) => row.startsWith("token="))
+                ?.split("=")[1];
+
+        if (token && process.env.SECRET_KEY) {
+            try {
+                const decoded = jwt.verify(token, process.env.SECRET_KEY) as any;
+                if (decoded && decoded.userId) {
+                    (socket as any).authenticatedUserId = decoded.userId;
+                }
+            } catch {
+                console.warn(`[Socket.io] Invalid token on handshake from ${socket.id}`);
+            }
+        }
+        next();
+    });
+
     io.on("connection", (socket: Socket) => {
-        const userId = socket.handshake.query.userId as string;
+        const queryUserId = socket.handshake.query.userId as string;
+        const authUserId = (socket as any).authenticatedUserId;
+        const userId = authUserId || queryUserId;
         const role = socket.handshake.query.role as string;
 
         if (userId) {
@@ -36,15 +63,19 @@ export const initializeSocket = (server: http.Server) => {
 
         // Subscribe to a specific order room for tracking
         socket.on("join_order", (orderId: string) => {
-            socket.join(`order_${orderId}`);
-            console.log(`Socket ${socket.id} joined room: order_${orderId}`);
+            if (orderId && typeof orderId === "string") {
+                socket.join(`order_${orderId}`);
+                console.log(`Socket ${socket.id} joined room: order_${orderId}`);
+            }
         });
 
-        // Rider live location update
-        socket.on("update_rider_location", (data: { orderId: string, lat: number, lng: number }) => {
-            const { orderId, lat, lng } = data;
-            // Broadcast live location to the order room (so customer and restaurant owner see it in real-time)
-            io.to(`order_${orderId}`).emit("rider_location_updated", { lat, lng });
+        // Rider live location update with validation
+        socket.on("update_rider_location", (data: { orderId: string; lat: number; lng: number }) => {
+            const { orderId, lat, lng } = data || {};
+            if (orderId && isValidCoordinate(lat, lng)) {
+                // Broadcast verified location to the order room
+                io.to(`order_${orderId}`).emit("rider_location_updated", { lat, lng });
+            }
         });
 
         socket.on("disconnect", () => {

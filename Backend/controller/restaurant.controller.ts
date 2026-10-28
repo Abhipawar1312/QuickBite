@@ -6,6 +6,7 @@ import { Menu } from "../models/menu.model";
 import { broadcastNewOrderToRiders, sendNotification, getIo } from "../utils/socket";
 import Stripe from "stripe";
 import { cache } from "../utils/cache";
+import { calculateHaversineDistance, isValidCoordinate } from "../utils/geo";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -310,7 +311,40 @@ export const searchRestaurant = async (req: Request, res: Response): Promise<voi
         // Only search verified restaurants
         query.isVerified = true;
 
-        const restaurants = await Restaurant.find(query);
+        const latitude = req.query.latitude ? Number(req.query.latitude) : undefined;
+        const longitude = req.query.longitude ? Number(req.query.longitude) : undefined;
+        const radiusKM = req.query.radiusKM ? Number(req.query.radiusKM) : 15;
+
+        let restaurants = await Restaurant.find(query);
+
+        // Geospatial proximity filtering and enrichment if user coordinates are provided
+        if (isValidCoordinate(latitude, longitude)) {
+            const enriched = restaurants
+                .map((r) => {
+                    const obj = r.toObject() as any;
+                    const coords = r.location?.coordinates; // [lng, lat]
+                    if (coords && coords.length === 2 && isValidCoordinate(coords[1], coords[0])) {
+                        obj.distanceKM = calculateHaversineDistance(latitude!, longitude!, coords[1], coords[0], "km");
+                    } else {
+                        obj.distanceKM = null;
+                    }
+                    return obj;
+                })
+                .filter((r) => r.distanceKM === null || r.distanceKM <= radiusKM)
+                .sort((a, b) => {
+                    if (a.distanceKM === null) return 1;
+                    if (b.distanceKM === null) return -1;
+                    return a.distanceKM - b.distanceKM;
+                });
+
+            await cache.set(cacheKey, enriched, 300);
+            res.status(200).json({
+                success: true,
+                data: enriched
+            });
+            return;
+        }
+
         await cache.set(cacheKey, restaurants, 300); // 5 mins cache
 
         res.status(200).json({

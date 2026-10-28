@@ -108,16 +108,27 @@ class CacheService {
 
   /**
    * Invalidate all keys matching a prefix or pattern (e.g. "restaurants:*", "cuisines:*", "menus:*")
+   * Uses non-blocking SCAN iteration instead of blocking KEYS command to preserve Redis latency.
    */
   public async invalidatePattern(patternPrefix: string): Promise<number> {
     let count = 0;
     try {
       if (this.isRedisConnected && this.redisClient) {
-        const keys = await this.redisClient.keys(`${patternPrefix}*`);
-        if (keys.length > 0) {
-          await this.redisClient.del(...keys);
-          count += keys.length;
-        }
+        let cursor = "0";
+        do {
+          const [nextCursor, keys] = await this.redisClient.scan(
+            cursor,
+            "MATCH",
+            `${patternPrefix}*`,
+            "COUNT",
+            100
+          );
+          cursor = nextCursor;
+          if (keys.length > 0) {
+            await this.redisClient.del(...keys);
+            count += keys.length;
+          }
+        } while (cursor !== "0");
       }
     } catch (e) {
       // ignore
@@ -130,6 +141,69 @@ class CacheService {
       }
     }
     return count;
+  }
+
+  /**
+   * Distributed Lock: Acquire a mutually exclusive lock with TTL and unique ownership token.
+   *
+   * @param lockKey Key name for the lock (e.g. "lock:dispatch:order_123")
+   * @param ttlMs Time-to-live in milliseconds before lock auto-expires (default 10,000ms)
+   * @returns Ownership token if acquired, or null if lock is already held
+   */
+  public async acquireLock(lockKey: string, ttlMs: number = 10000): Promise<string | null> {
+    const token = `${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+
+    try {
+      if (this.isRedisConnected && this.redisClient) {
+        // Atomic Redis SET key token NX PX ttlMs
+        const result = await this.redisClient.set(lockKey, token, "PX", ttlMs, "NX");
+        if (result === "OK") {
+          return token;
+        }
+        return null;
+      }
+    } catch {
+      // Fall through to memory lock
+    }
+
+    // In-memory fallback lock
+    const existing = this.memoryStore.get(lockKey);
+    const now = Date.now();
+    if (!existing || now > existing.expiry) {
+      this.memoryStore.set(lockKey, { data: token, expiry: now + ttlMs });
+      return token;
+    }
+    return null;
+  }
+
+  /**
+   * Distributed Lock: Safely release lock ONLY if the caller holds the matching ownership token.
+   * Uses an atomic Lua script in Redis to prevent releasing a lock that has expired and been re-acquired.
+   */
+  public async releaseLock(lockKey: string, token: string): Promise<boolean> {
+    try {
+      if (this.isRedisConnected && this.redisClient) {
+        // Atomic Lua script: only delete if current value equals caller's token
+        const luaScript = `
+          if redis.call("get", KEYS[1]) == ARGV[1] then
+            return redis.call("del", KEYS[1])
+          else
+            return 0
+          end
+        `;
+        const res = await this.redisClient.eval(luaScript, 1, lockKey, token);
+        return res === 1;
+      }
+    } catch {
+      // Fall through to memory
+    }
+
+    const existing = this.memoryStore.get(lockKey);
+    if (existing && existing.data === token) {
+      this.memoryStore.delete(lockKey);
+      return true;
+    }
+    return false;
   }
 
   /**

@@ -41,4 +41,7 @@ const ReviewSchema = new Schema<IReview>(
     { timestamps: true }
 );
 
+ReviewSchema.index({ user: 1, order: 1 }, { unique: true });
+ReviewSchema.index({ restaurant: 1 });
+
 export const Review: Model<IReview> = mongoose.model<IReview>("Review", ReviewSchema);

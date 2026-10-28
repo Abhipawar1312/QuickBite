@@ -10,7 +10,8 @@ import {
     verifyRiderAdmin,
     deleteRiderAdmin,
     getRiderProfile,
-    getRiderEarnings
+    getRiderEarnings,
+    reconcileRiderEarningsController
 } from "../controller/rider.controller";
 
 const router = express.Router();
@@ -19,6 +20,8 @@ router.route("/profile").get(isAuthenticated, getRiderProfile);
 router.route("/submit").post(isAuthenticated, submitRiderDetails);
 router.route("/toggle-online").post(isAuthenticated, toggleOnlineStatus);
 router.route("/earnings").get(isAuthenticated, isRider, getRiderEarnings);
+router.route("/ledger").get(isAuthenticated, isRider, getRiderEarnings);
+router.route("/earnings/reconcile").post(isAuthenticated, isRider, reconcileRiderEarningsController);
 router.route("/order/:orderId/accept").put(isAuthenticated, isRider, acceptOrder);
 router.route("/order/:orderId/workflow").put(isAuthenticated, isRider, updateDeliveryWorkflow);
 

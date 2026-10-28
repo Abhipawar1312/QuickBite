@@ -5,18 +5,8 @@ import { Restaurant } from "../models/restaurant.model";
 import { Order } from "../models/order.model";
 import { sendNotification, getIo } from "../utils/socket";
 
-// Helper function to calculate distance in meters
-function calculateDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const R = 6371e3; // Radius of Earth in meters
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c; // Distance in meters
-}
+import { calculateHaversineDistance } from "../utils/geo";
+import { ledgerService } from "../services/ledger.service";
 
 export const submitRiderDetails = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -112,24 +102,38 @@ export const acceptOrder = async (req: Request, res: Response): Promise<void> =>
             return;
         }
 
-        const order = await Order.findById(orderId);
+        // Conditional Atomic Database Update: Guarantees exactly ONE rider can claim the order
+        // even under concurrent requests across multiple backend cluster instances.
+        const order = await Order.findOneAndUpdate(
+            {
+                _id: orderId,
+                rider: null, // Order must currently be unassigned
+                status: { $in: ["pending", "confirmed", "preparing", "ready_for_riders"] }
+            },
+            {
+                $set: {
+                    rider: new mongoose.Types.ObjectId(userId),
+                    riderStatus: "accepted",
+                    status: "preparing" // Advance status atomically
+                }
+            },
+            { new: true }
+        );
+
         if (!order) {
-            res.status(404).json({ success: false, message: "Order not found." });
+            // Either order doesn't exist, was cancelled, or was already claimed by another rider
+            const existingOrder = await Order.findById(orderId);
+            if (!existingOrder) {
+                res.status(404).json({ success: false, message: "Order not found." });
+                return;
+            }
+            if (existingOrder.rider) {
+                res.status(409).json({ success: false, message: "Order already taken by another rider." });
+                return;
+            }
+            res.status(400).json({ success: false, message: `Order cannot be accepted in status '${existingOrder.status}'.` });
             return;
         }
-
-        // Check if order is already assigned
-        if (order.rider) {
-            res.status(400).json({ success: false, message: "Order already taken" });
-            return;
-        }
-
-        order.rider = new mongoose.Types.ObjectId(userId);
-        order.riderStatus = "accepted";
-        if (order.status !== "ready_for_riders") {
-            order.status = "preparing"; // Advance status to preparing
-        }
-        await order.save();
 
         // Notify customer and restaurant that a rider has accepted
         const restaurant = await Restaurant.findById(order.restaurant);
@@ -219,6 +223,13 @@ export const updateDeliveryWorkflow = async (req: Request, res: Response): Promi
             order.riderStatus = "delivered";
             order.status = "delivered";
             await order.save();
+
+            // Record authoritative immutable ledger entries for delivery fee and tip
+            try {
+                await ledgerService.recordOrderDeliveryEarnings(orderId, userId.toString());
+            } catch (ledgerErr) {
+                console.error("[rider.controller] Error recording ledger earnings:", ledgerErr);
+            }
 
             sendNotification(order.user.toString(), "order_delivered_notification", {
                 orderId: order._id,
@@ -340,67 +351,44 @@ export const getRiderProfile = async (req: Request, res: Response): Promise<void
 export const getRiderEarnings = async (req: Request, res: Response): Promise<void> => {
     try {
         const userId = req.id;
-        
-        const startOfToday = new Date();
-        startOfToday.setHours(0, 0, 0, 0);
 
-        const startOfWeek = new Date();
-        startOfWeek.setDate(startOfWeek.getDate() - 7);
-        startOfWeek.setHours(0, 0, 0, 0);
-
+        // Retrieve delivered orders for order history listing
         const deliveredOrders = await Order.find({
             rider: userId,
             status: "delivered"
         }).populate("restaurant").sort({ createdAt: -1 });
 
-        let todayEarnings = 0;
-        let weekEarnings = 0;
-        let totalEarnings = 0;
-        let todayTips = 0;
-        let weekTips = 0;
-        let totalTips = 0;
-        let tripsToday = 0;
-        let tripsWeek = 0;
-        const tripsTotal = deliveredOrders.length;
+        // Retrieve authoritative aggregated financial ledger earnings
+        let earningsSummary = await ledgerService.getRiderEarningsSummary(userId);
 
-        deliveredOrders.forEach(order => {
-            const baseFee = order.deliveryFee || 25;
-            const tip = order.tipAmount || 0;
-            const fee = baseFee + tip;
-            const created = new Date(order.createdAt);
-            
-            totalEarnings += fee;
-            totalTips += tip;
-
-            if (created >= startOfToday) {
-                todayEarnings += fee;
-                todayTips += tip;
-                tripsToday++;
-            }
-            if (created >= startOfWeek) {
-                weekEarnings += fee;
-                weekTips += tip;
-                tripsWeek++;
-            }
-        });
+        // Fallback: If no ledger records exist yet for older historical orders, automatically reconcile
+        if (earningsSummary.total === 0 && deliveredOrders.length > 0) {
+            await ledgerService.reconcileRiderEarnings(userId);
+            earningsSummary = await ledgerService.getRiderEarningsSummary(userId);
+        }
 
         res.status(200).json({
             success: true,
-            earnings: {
-                today: todayEarnings,
-                week: weekEarnings,
-                total: totalEarnings,
-                todayTips,
-                weekTips,
-                totalTips,
-                tripsToday,
-                tripsWeek,
-                tripsTotal
-            },
+            earnings: earningsSummary,
             deliveries: deliveredOrders
         });
     } catch (error) {
         console.error("getRiderEarnings error:", error);
+        res.status(500).json({ success: false, message: "Internal server error" });
+    }
+};
+
+export const reconcileRiderEarningsController = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const userId = req.id;
+        const result = await ledgerService.reconcileRiderEarnings(userId);
+        res.status(200).json({
+            success: true,
+            message: "Rider earnings reconciliation completed successfully.",
+            reconciliation: result
+        });
+    } catch (error) {
+        console.error("reconcileRiderEarningsController error:", error);
         res.status(500).json({ success: false, message: "Internal server error" });
     }
 };

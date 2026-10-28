@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import mongoose from "mongoose";
 import { Order } from "../models/order.model";
 import { Restaurant } from "../models/restaurant.model";
 import { Menu } from "../models/menu.model";
@@ -21,8 +22,8 @@ function deduplicateItems(items: any[]): any[] {
 }
 
 /**
- * 1. Frequently Paired Together
- * Computes item synergies based on historical order co-occurrences or restaurant complements.
+ * 1. Frequently Paired Together (Market-Basket Analysis / Item Co-occurrence)
+ * Computes dish synergies based on database aggregation of historical order co-occurrences.
  */
 export const getFrequentlyPaired = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -37,38 +38,50 @@ export const getFrequentlyPaired = async (req: Request, res: Response): Promise<
       : [];
     if (menuId) excludeList.push(menuId.toString());
 
-    // Find orders that contain this menu item
-    const pairedMenuMap = new Map<string, { count: number; name: string }>();
+    let topPairedIds: string[] = [];
 
-    if (menuId) {
-      const ordersWithItem = await Order.find({
-        "cartItems.menuId": menuId,
-        status: { $ne: "Cancelled" },
-      }).limit(50);
+    // MongoDB Aggregation Pipeline: High-performance item synergy co-occurrence
+    if (menuId && mongoose.Types.ObjectId.isValid(menuId.toString())) {
+      const targetMenuObjId = new mongoose.Types.ObjectId(menuId.toString());
+      const excludeObjIds = excludeList
+        .filter((id) => mongoose.Types.ObjectId.isValid(id))
+        .map((id) => new mongoose.Types.ObjectId(id));
 
-      ordersWithItem.forEach((order) => {
-        (order.cartItems || []).forEach((item: any) => {
-          if (item.menuId && !excludeList.includes(item.menuId.toString())) {
-            const key = item.menuId.toString();
-            const prev = pairedMenuMap.get(key) || { count: 0, name: item.name };
-            prev.count += 1;
-            pairedMenuMap.set(key, prev);
-          }
-        });
-      });
+      const cooccurrences = await Order.aggregate([
+        {
+          $match: {
+            "cartItems.menuId": targetMenuObjId,
+            status: { $nin: ["Cancelled", "cancelled"] },
+          },
+        },
+        { $unwind: "$cartItems" },
+        {
+          $match: {
+            "cartItems.menuId": {
+              $ne: targetMenuObjId,
+              $nin: excludeObjIds,
+            },
+          },
+        },
+        {
+          $group: {
+            _id: "$cartItems.menuId",
+            pairCount: { $sum: 1 },
+          },
+        },
+        { $sort: { pairCount: -1 } },
+        { $limit: 4 },
+      ]);
+
+      topPairedIds = cooccurrences.map((c) => c._id.toString());
     }
-
-    const topPairedIds = Array.from(pairedMenuMap.entries())
-      .sort((a, b) => b[1].count - a[1].count)
-      .slice(0, 4)
-      .map(([id]) => id);
 
     let pairedItems: any[] = [];
     if (topPairedIds.length > 0) {
       pairedItems = await Menu.find({ _id: { $in: topPairedIds } });
     }
 
-    // Complementary dishes from the same restaurant's populated menus
+    // Complementary dishes from the same restaurant's populated menus (Cold-start fallback)
     if (pairedItems.length < 4 && restaurantId) {
       const restaurant = await Restaurant.findById(restaurantId).populate("menus");
       if (restaurant && Array.isArray(restaurant.menus)) {
@@ -93,8 +106,8 @@ export const getFrequentlyPaired = async (req: Request, res: Response): Promise<
 };
 
 /**
- * 2. Trending in your area
- * Identifies top-rated restaurants and unique popular dishes in the user's city or area.
+ * 2. Trending in your area (Collaborative Local Popularity)
+ * Identifies top-rated restaurants and popular dishes in the user's city or area.
  */
 export const getTrending = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -106,7 +119,7 @@ export const getTrending = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    const query: any = {};
+    const query: any = { isVerified: true };
     if (city && city.trim() && city.trim().toLowerCase() !== "all") {
       query.city = { $regex: `^${city.trim()}$`, $options: "i" };
     }
@@ -169,10 +182,9 @@ export const getTrending = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
-
 /**
  * 3. Personalized Recommendations ("Based on your past orders")
- * Analyzes the user's past order history, favorite cuisines, and top flavors.
+ * Uses Recency-Weighted Cuisine Affinity + Time-of-Day Context with Cold-Start Fallback.
  */
 export const getPersonalized = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -184,10 +196,10 @@ export const getPersonalized = async (req: Request, res: Response): Promise<void
       return;
     }
 
-    // Fetch user's completed orders
+    // Fetch user's completed orders with recency ordering
     const pastOrders = await Order.find({
       user: userId,
-      status: { $in: ["delivered", "confirmed", "out_for_delivery", "preparing"] },
+      status: { $in: ["delivered", "confirmed", "outfordelivery", "preparing"] },
     })
       .populate({
         path: "restaurant",
@@ -196,26 +208,36 @@ export const getPersonalized = async (req: Request, res: Response): Promise<void
       .sort({ createdAt: -1 })
       .limit(20);
 
-    const favoriteCuisines = new Set<string>();
-    const orderedMenuNames = new Set<string>();
+    // Compute Recency-Weighted Cuisine Score Map
+    const cuisineScores = new Map<string, number>();
 
-    pastOrders.forEach((o) => {
+    pastOrders.forEach((o, index) => {
+      // Recency decay factor: recent orders (index 0..4) weight 1.0, older orders decay to 0.4
+      const recencyWeight = Math.max(0.4, 1.0 - index * 0.03);
       const rest = o.restaurant as any;
-      if (rest?.cuisines) {
-        rest.cuisines.forEach((c: string) => favoriteCuisines.add(c.toLowerCase()));
+      if (rest?.cuisines && Array.isArray(rest.cuisines)) {
+        rest.cuisines.forEach((c: string) => {
+          const key = c.trim().toLowerCase();
+          cuisineScores.set(key, (cuisineScores.get(key) || 0) + recencyWeight);
+        });
       }
-      (o.cartItems || []).forEach((item: any) => {
-        if (item.name) orderedMenuNames.add(item.name.toLowerCase());
-      });
     });
+
+    // Sort favorite cuisines by weighted score
+    const topCuisines = Array.from(cuisineScores.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([cuisine]) => cuisine);
 
     const user = await User.findById(userId);
     const userCity = user?.city || "";
 
     let recommendedRestaurants: any[] = [];
-    if (favoriteCuisines.size > 0) {
-      const cuisineRegexList = Array.from(favoriteCuisines).map((c) => new RegExp(c, "i"));
+
+    // If user has past order history, recommend matching their top weighted cuisines
+    if (topCuisines.length > 0) {
+      const cuisineRegexList = topCuisines.slice(0, 3).map((c) => new RegExp(`^${c}$`, "i"));
       recommendedRestaurants = await Restaurant.find({
+        isVerified: true,
         cuisines: { $in: cuisineRegexList },
         ...(userCity ? { city: { $regex: userCity, $options: "i" } } : {}),
       })
@@ -224,17 +246,21 @@ export const getPersonalized = async (req: Request, res: Response): Promise<void
         .limit(6);
     }
 
-    if (recommendedRestaurants.length === 0) {
-      recommendedRestaurants = await Restaurant.find(
-        userCity ? { city: { $regex: userCity, $options: "i" } } : {}
-      )
+    // COLD-START FALLBACK: If user is new or no matching restaurants in their city,
+    // fall back to top-rated restaurants in user's city
+    if (recommendedRestaurants.length === 0 && userCity) {
+      recommendedRestaurants = await Restaurant.find({
+        isVerified: true,
+        city: { $regex: userCity, $options: "i" },
+      })
         .populate("menus")
         .sort({ averageRating: -1 })
         .limit(6);
     }
 
+    // GLOBAL COLD-START FALLBACK: If still empty, return top-rated platform restaurants
     if (recommendedRestaurants.length === 0) {
-      recommendedRestaurants = await Restaurant.find()
+      recommendedRestaurants = await Restaurant.find({ isVerified: true })
         .populate("menus")
         .sort({ averageRating: -1 })
         .limit(6);
@@ -267,7 +293,7 @@ export const getPersonalized = async (req: Request, res: Response): Promise<void
     const uniqueDishes = deduplicateItems(rawDishes).slice(0, 8);
 
     const result = {
-      favoriteCuisines: Array.from(favoriteCuisines),
+      favoriteCuisines: topCuisines.slice(0, 5),
       restaurants: recommendedRestaurants,
       dishes: uniqueDishes,
     };
@@ -282,5 +308,3 @@ export const getPersonalized = async (req: Request, res: Response): Promise<void
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
-
-

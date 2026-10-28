@@ -30,11 +30,14 @@ app.use(bodyParser.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.json());
 app.use(cookieParser());
+import { correlationMiddleware } from "./utils/logger";
+
 const corsOptions = {
     origin: process.env.FRONTEND_URL,
     credentials: true
 }
 app.use(cors(corsOptions));
+app.use(correlationMiddleware);
 app.use("/api/v1", generalApiLimiter);
 
 //api's
